@@ -1,0 +1,39 @@
+{
+  "gate": "B",
+  "session": "toolbox-v12",
+  "workspace": "w1",
+  "cwd": "E:/toolbox-vision-demo",
+  "panes": {
+    "w1:p1": "Codex developer",
+    "w1:p2": "Pi reviewer --tools read,grep,find,ls --no-mcp --no-approve",
+    "w1:p3": "npm.cmd run dev -- --port 3003"
+  },
+  "web": "http://127.0.0.1:3003",
+  "httpStatus": 200,
+  "usage": [
+    {
+      "t": "2026-11-20T22:01:33.6236652+08:00",
+      "agent": "codex",
+      "provider": "demo",
+      "host": "api.lk888.ai",
+      "model": "tt-6.1-sol",
+      "req": "demo/tt-6.1-sol",
+      "served": "tt-6.1-sol",
+      "status": 200,
+      "route_id": 1795171337804
+    },
+    {
+      "t": "2026-11-20T22:01:52.7138122+08:00",
+      "agent": "pi",
+      "provider": "demo",
+      "host": "api.lk888.ai",
+      "model": "tt-6.1-sol",
+      "req": "demo/tt-6.1-sol",
+      "served": "tt-6.1-sol",
+      "status": 200,
+      "route_id": 1795171337807
+    }
+  ],
+  "review": "E:\\toolbox-vision-demo\\docs\\verification\\PI_READONLY_REVIEW_GATE_B.md",
+  "nextGeneratedFile": "AGENTS.md generated automatically by next dev; no business source overwritten"
+}

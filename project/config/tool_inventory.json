@@ -1,0 +1,65 @@
+{
+  "inventoryId": "toolbox-yellow-case-demo-v1",
+  "name": "黄色工具盒（照片暂定版）",
+  "version": 1,
+  "provisional": true,
+  "source": "用户提供的单张工具盒照片；未经人工逐件核验",
+  "imageReference": "/samples/complete_reference.jpg",
+  "coordinateSystem": "normalized_0_1000",
+  "items": [
+    {
+      "classId": "large_driver_handle",
+      "label": "大号螺丝刀手柄组件",
+      "expectedCount": 1,
+      "countingMode": "assembly",
+      "confidence": "high",
+      "provisional": false,
+      "notes": "手柄及其下方连接杆按一件组件计数。"
+    },
+    {
+      "classId": "small_driver_handle",
+      "label": "小号螺丝刀手柄组件",
+      "expectedCount": 1,
+      "countingMode": "assembly",
+      "confidence": "high",
+      "provisional": false,
+      "notes": "手柄及前端连接结构按一件组件计数。"
+    },
+    {
+      "classId": "socket",
+      "label": "套筒",
+      "expectedCount": 9,
+      "countingMode": "individual",
+      "confidence": "medium",
+      "provisional": true,
+      "notes": "根据此次提供照片的套筒收纳位更新为9个；正式基线仍需人工核定。"
+    },
+    {
+      "classId": "bit_head",
+      "label": "批头",
+      "expectedCount": 40,
+      "countingMode": "group_count",
+      "confidence": "low",
+      "provisional": true,
+      "notes": "约数，仅供 Demo。真实数量需要按内托槽位人工逐个确认。"
+    },
+    {
+      "classId": "short_extension_adapter",
+      "label": "短延长杆 / 转接杆",
+      "expectedCount": 1,
+      "countingMode": "individual",
+      "confidence": "medium",
+      "provisional": true,
+      "notes": "照片下部横向上方的短件。"
+    },
+    {
+      "classId": "long_extension_bar",
+      "label": "长延长杆",
+      "expectedCount": 1,
+      "countingMode": "individual",
+      "confidence": "medium",
+      "provisional": true,
+      "notes": "照片下部横向下方的长银色件。"
+    }
+  ]
+}

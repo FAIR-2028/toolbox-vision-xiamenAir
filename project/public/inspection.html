@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="#0b1424" name="theme-color"/>
+<title>工具盒完整性检查</title>
+<style>
+    :root {
+      --navy: #0b1424;
+      --navy-2: #12213a;
+      --ink: #172033;
+      --muted: #68758a;
+      --line: #e5eaf1;
+      --panel: #ffffff;
+      --bg: #f4f7fb;
+      --blue: #2463eb;
+      --blue-soft: #edf3ff;
+      --green: #15966a;
+      --green-soft: #e9f8f1;
+      --red: #d93b45;
+      --red-soft: #fff0f0;
+      --amber: #b7791f;
+      --amber-soft: #fff7e7;
+      --shadow: 0 12px 32px rgba(21, 34, 58, .07);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: Inter, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    .topbar {
+      height: 70px;
+      background: var(--navy);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(18px, 4vw, 64px);
+      gap: 20px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark {
+      width: 38px; height: 38px; border-radius: 12px;
+      display: grid; place-items: center;
+      background: linear-gradient(145deg, #f5a623, #e77818);
+      color: #172033; font-weight: 900; font-size: 17px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
+    }
+    .brand-name { font-size: 15px; font-weight: 750; letter-spacing: .02em; }
+    .brand-sub { color: #9eacc2; font-size: 10px; letter-spacing: .16em; margin-top: 3px; }
+    .top-right { display: flex; align-items: center; gap: 10px; color: #c2ccda; font-size: 12px; }
+    .top-pill {
+      display: inline-flex; align-items: center; gap: 7px;
+      border: 1px solid rgba(255,255,255,.16);
+      padding: 7px 11px; border-radius: 999px;
+      color: #e8edf5; background: rgba(255,255,255,.05);
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #f3b84a; }
+    main { max-width: 1540px; margin: 0 auto; padding: 32px clamp(16px, 3.5vw, 54px) 50px; }
+    .page-head {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      gap: 24px; margin-bottom: 24px; flex-wrap: wrap;
+    }
+    .eyebrow { color: var(--blue); font-size: 11px; font-weight: 800; letter-spacing: .15em; margin-bottom: 9px; }
+    h1 { margin: 0; font-size: clamp(26px, 3vw, 36px); letter-spacing: -.035em; line-height: 1.15; }
+    .subtitle { color: var(--muted); margin: 10px 0 0; font-size: 14px; }
+    .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .btn {
+      border: 1px solid var(--line); background: #fff; color: #253148;
+      padding: 11px 16px; border-radius: 11px; font-size: 13px; font-weight: 700;
+      transition: .18s ease; box-shadow: 0 2px 6px rgba(20,30,50,.03);
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 7px 18px rgba(20,30,50,.09); }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: white; }
+    .btn-dark { background: var(--navy); border-color: var(--navy); color: white; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+    .notice {
+      display: flex; gap: 11px; align-items: flex-start;
+      padding: 13px 16px; border: 1px solid #f2dcae; background: #fff9eb;
+      color: #805915; border-radius: 13px; font-size: 12px; line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    .notice strong { color: #69460d; }
+    .notice-icon { font-size: 17px; line-height: 1; }
+    .metrics {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px; margin-bottom: 18px;
+    }
+    .metric {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 15px;
+      padding: 17px 18px; box-shadow: 0 4px 14px rgba(20,30,50,.025);
+    }
+    .metric-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .metric-label { color: var(--muted); font-size: 12px; font-weight: 650; }
+    .metric-icon {
+      width: 29px; height: 29px; border-radius: 9px; display: grid; place-items: center;
+      color: var(--blue); background: var(--blue-soft); font-size: 14px; font-weight: 800;
+    }
+    .metric-value { font-size: 29px; font-weight: 800; letter-spacing: -.04em; margin-top: 10px; }
+    .metric-foot { color: #8a96a8; font-size: 11px; margin-top: 3px; }
+    .workspace {
+      display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(340px, .85fr);
+      gap: 18px; align-items: start;
+    }
+    .card {
+      background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+      box-shadow: var(--shadow); overflow: hidden;
+    }
+    .card-head {
+      padding: 17px 20px; display: flex; justify-content: space-between; align-items: center;
+      gap: 14px; border-bottom: 1px solid var(--line);
+    }
+    .card-title { font-size: 14px; font-weight: 800; }
+    .card-desc { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .tag {
+      display: inline-flex; align-items: center; gap: 6px; border-radius: 999px;
+      padding: 6px 9px; font-size: 10px; font-weight: 800; white-space: nowrap;
+      color: #8b5a10; background: var(--amber-soft); border: 1px solid #f1dfb8;
+    }
+    .tag.blue { color: #2558bd; background: var(--blue-soft); border-color: #dbe6ff; }
+    .tag.green { color: #147b59; background: var(--green-soft); border-color: #c9efdd; }
+    .tag.red { color: #b62e38; background: var(--red-soft); border-color: #f6cfd2; }
+    .viewer-toolbar {
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
+      padding: 12px 18px; background: #fbfcfe; border-bottom: 1px solid var(--line);
+      flex-wrap: wrap;
+    }
+    .file-meta { display: flex; align-items: center; gap: 8px; min-width: 0; color: #59677d; font-size: 11px; }
+    .file-name { color: #253148; font-weight: 750; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 230px; }
+    .view-tools { display: flex; gap: 8px; align-items: center; color: #68758a; font-size: 11px; }
+    .switch {
+      border: 0; background: #d9e0eb; border-radius: 999px; width: 34px; height: 19px;
+      padding: 2px; display: inline-flex; align-items: center; transition: .2s;
+    }
+    .switch::after { content: ""; width: 15px; height: 15px; border-radius: 50%; background: white; transition: .2s; box-shadow: 0 1px 3px #0002; }
+    .switch.on { background: var(--blue); justify-content: flex-end; }
+    .image-stage {
+      background: #e9edf3; padding: 20px; display: grid; place-items: center;
+      min-height: 570px; position: relative;
+    }
+    .photo-wrap {
+      position: relative; width: min(100%, 470px); border-radius: 10px;
+      overflow: hidden; background: #fff; box-shadow: 0 10px 30px rgba(15,25,40,.18);
+      line-height: 0;
+    }
+    .photo-wrap img { display: block; width: 100%; height: auto; max-height: 700px; object-fit: contain; }
+    .overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .bbox { position: absolute; border: 2px solid #19a66f; background: rgba(25,166,111,.06); border-radius: 5px; }
+    .bbox.red { border-color: #e13f4b; background: rgba(225,63,75,.10); border-style: dashed; }
+    .bbox.amber { border-color: #d59a28; background: rgba(213,154,40,.10); border-style: dashed; }
+    .bbox-label {
+      position: absolute; left: -2px; top: -22px; max-width: 190px;
+      background: #15966a; color: white; padding: 4px 7px; border-radius: 5px 5px 5px 0;
+      font-size: 10px; line-height: 1.2; font-weight: 800; white-space: nowrap;
+    }
+    .bbox.red .bbox-label { background: #d93b45; }
+    .bbox.amber .bbox-label { background: #b7791f; }
+    .viewer-footer {
+      display: flex; justify-content: space-between; gap: 10px; padding: 12px 18px;
+      border-top: 1px solid var(--line); color: #8490a2; font-size: 10px;
+    }
+    .legend { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 2px; background: var(--green); }
+    .legend-dot.red { background: var(--red); }
+    .legend-dot.amber { background: #d59a28; }
+    .result-panel { display: flex; flex-direction: column; gap: 14px; }
+    .verdict {
+      padding: 19px; border-radius: 16px; background: var(--red-soft);
+      border: 1px solid #f4c9cd;
+    }
+    .verdict.complete { background: var(--green-soft); border-color: #c9efdd; }
+    .verdict.review { background: var(--amber-soft); border-color: #f1dfb8; }
+    .verdict-kicker { font-size: 11px; font-weight: 800; letter-spacing: .1em; color: #b62e38; }
+    .verdict.complete .verdict-kicker { color: #147b59; }
+    .verdict.review .verdict-kicker { color: #9b691b; }
+    .verdict-main { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; margin-top: 8px; }
+    .verdict-count { font-size: 34px; font-weight: 900; letter-spacing: -.05em; color: #b62e38; line-height: 1; }
+    .verdict.complete .verdict-count { color: #147b59; }
+    .verdict.review .verdict-count { color: #9b691b; }
+    .verdict-copy { color: #8b3d43; font-size: 12px; line-height: 1.55; margin-top: 10px; }
+    .verdict.complete .verdict-copy { color: #267357; }
+    .verdict.review .verdict-copy { color: #8a641f; }
+    .missing-list { display: flex; flex-direction: column; gap: 9px; }
+    .missing-item {
+      border: 1px solid #f1d1d4; background: #fffafa; border-radius: 13px;
+      padding: 13px 14px; display: flex; gap: 12px; align-items: flex-start;
+    }
+    .missing-symbol {
+      flex: 0 0 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+      background: #ffe3e5; color: #c4313b; font-weight: 900; font-size: 15px;
+    }
+    .missing-name { font-size: 13px; font-weight: 800; color: #7f2029; }
+    .missing-detail { font-size: 11px; color: #8c6064; margin-top: 4px; line-height: 1.55; }
+    .missing-location { display: inline-flex; margin-top: 7px; color: #b62e38; font-size: 10px; font-weight: 800; }
+    .section-card { padding: 16px 18px; }
+    .section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px; }
+    .section-head h3 { margin: 0; font-size: 13px; }
+    .section-head span { font-size: 10px; color: #8a96a8; }
+    .inventory { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .inventory th { text-align: left; color: #8a96a8; font-size: 10px; font-weight: 700; padding: 8px 5px; border-bottom: 1px solid var(--line); }
+    .inventory td { padding: 10px 5px; border-bottom: 1px solid #f0f2f6; }
+    .inventory tr:last-child td { border-bottom: 0; }
+    .inventory td:first-child { font-weight: 700; color: #344158; }
+    .num { font-variant-numeric: tabular-nums; font-weight: 750; }
+    .state { font-size: 10px; font-weight: 800; border-radius: 999px; padding: 4px 7px; white-space: nowrap; }
+    .state.ok { color: #167b59; background: var(--green-soft); }
+    .state.missing { color: #b62e38; background: var(--red-soft); }
+    .state.review { color: #946318; background: var(--amber-soft); }
+    .samples { margin-top: 18px; }
+    .sample-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 15px; }
+    .sample-card {
+      border: 1px solid var(--line); background: #fff; border-radius: 13px; overflow: hidden;
+      text-align: left; padding: 0; color: var(--ink); transition: .18s; position: relative;
+    }
+    .sample-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(20,30,50,.08); }
+    .sample-card.active { border: 2px solid var(--blue); box-shadow: 0 0 0 3px rgba(36,99,235,.09); }
+    .sample-thumb { height: 125px; background: #edf1f6; display: grid; place-items: center; overflow: hidden; }
+    .sample-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: center 30%; }
+    .sample-copy { padding: 10px 11px 12px; }
+    .sample-title { font-size: 11px; font-weight: 800; }
+    .sample-sub { font-size: 10px; color: #8490a2; margin-top: 4px; }
+    .sample-badge { position: absolute; top: 8px; left: 8px; background: rgba(11,20,36,.82); color: #fff; font-size: 9px; padding: 4px 6px; border-radius: 5px; }
+    .bottom-note { color: #8994a5; font-size: 10px; line-height: 1.7; margin: 14px 3px 0; }
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translate(-50%, 20px);
+      background: #172033; color: white; padding: 12px 16px; border-radius: 11px;
+      font-size: 12px; box-shadow: 0 12px 35px #0b142455; opacity: 0; pointer-events: none;
+      transition: .25s; z-index: 20; max-width: min(90vw, 560px); text-align: center;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .upload-empty {
+      display: none; text-align: center; color: #536176; font-size: 12px; line-height: 1.7;
+      padding: 24px;
+    }
+    .upload-empty strong { display: block; color: #172033; font-size: 14px; margin-bottom: 5px; }
+    @media (max-width: 1050px) {
+      .workspace { grid-template-columns: 1fr; }
+      .result-panel { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
+      .result-panel .section-card { grid-column: 1 / -1; }
+      .image-stage { min-height: auto; }
+      .photo-wrap { width: min(100%, 440px); }
+    }
+    @media (max-width: 700px) {
+      .topbar { height: 62px; padding: 0 15px; }
+      .top-right .top-pill:nth-child(2) { display: none; }
+      main { padding: 23px 13px 35px; }
+      .page-head { align-items: flex-start; }
+      .actions { width: 100%; }
+      .actions .btn { flex: 1; }
+      .metrics { grid-template-columns: repeat(2, 1fr); gap: 9px; }
+      .metric { padding: 13px; }
+      .metric-value { font-size: 25px; }
+      .result-panel { display: flex; }
+      .sample-grid { grid-template-columns: repeat(2, 1fr); padding: 10px; gap: 9px; }
+      .sample-thumb { height: 105px; }
+      .image-stage { padding: 10px; }
+      .viewer-footer { flex-direction: column; }
+    }
+  </style>
+<style>
+:root{color-scheme:light;--navy:#183544;--ink:#1e3440;--muted:#75858d;--line:#e2e9ed;--panel:#fff;--bg:#f3f6f7;--blue:#257481;--blue-soft:#eaf4f5;--green:#26846c;--green-soft:#eaf6f0;--red:#d06443;--red-soft:#fff4ee;--amber:#a38138;--amber-soft:#faf5e7;--radius:14px;--shadow:0 4px 20px #24404d06}
+body{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',sans-serif;line-height:1.55;background:#f3f6f7;color:#1e3440}.topbar{background:white;color:#183544;height:80px;border-bottom:1px solid #e2e9ed;padding:0 40px}.brand-mark{border-radius:10px;background:#236b78;color:white;box-shadow:none;width:40px;height:40px;font-size:20px}.brand-name{font-size:18px;font-weight:650;letter-spacing:0}.brand-sub{color:#8a9aa1;font-size:10px;letter-spacing:1.3px}.top-right{color:#71838b;font-size:12px}.top-pill{background:#f7fafb;border:1px solid #dfe7eb;color:#5f7781;padding:7px 12px;border-radius:6px}.dot{background:#399a80}.top-pill:first-child{background:#edf7f1;color:#43836a;border-color:#d4eadd}main{max-width:1540px;padding:30px 40px 42px}.page-head{margin-bottom:24px;align-items:center}.eyebrow{color:#81949c;font-size:10px;font-weight:550;letter-spacing:1.8px;margin-bottom:7px}h1{font-size:29px;font-weight:650;letter-spacing:-.7px;color:#203742}.subtitle{font-size:14px;color:#7b8d95;margin-top:9px}.btn{border-radius:7px;font-size:14px;padding:11px 17px;box-shadow:none;font-weight:550;border-color:#dce5e9}.btn-primary{background:#236e7b;border-color:#236e7b}.btn:hover{transform:none;box-shadow:0 3px 10px #20434b12}.btn-primary:hover{background:#195b67}.metrics{gap:16px;margin-bottom:24px}.metric{padding:20px 22px;border-radius:12px;border-color:#e1e8eb;box-shadow:none}.metric-label{font-size:13px;color:#71868f;font-weight:500}.metric-icon{width:30px;height:30px;background:#eef6f6;color:#377781;border-radius:7px}.metric-value{font-size:35px;font-weight:600;letter-spacing:-1.2px;color:#213d48;line-height:1.3;margin-top:13px}.metric-foot{font-size:11px;color:#91a1a8;margin-top:6px}.workspace{grid-template-columns:minmax(0,1.38fr) minmax(390px,.82fr);gap:22px}.card{border-radius:14px;border-color:#dfe8ec;box-shadow:0 3px 18px #1d414a04}.card-head{padding:19px 22px;border-color:#e6ecef;background:white}.card-title{font-size:16px;font-weight:650;color:#29424c}.card-desc{font-size:12px;color:#8b9da5;margin-top:5px}.tag{border-radius:5px;font-size:11px;padding:5px 9px;font-weight:550}.tag.blue{color:#427b83;background:#edf5f6;border-color:#d8e8eb}.tag.red{color:#b46a4e;background:#fff4ee;border-color:#f2dfd4}.tag.green{color:#39846b;background:#edf7f1;border-color:#d5ebdd}.viewer-toolbar{background:#fafcfc;border-color:#e5ecef;padding:12px 20px}.file-meta,.view-tools{font-size:12px;color:#8a9ca5}.file-name{color:#536e79;font-weight:500}.switch{height:19px;width:34px}.switch.on{background:#3c8d96}.image-stage{background:#eaf0f2;min-height:570px;padding:24px;background-image:radial-gradient(#adc0c840 .7px,transparent .7px);background-size:12px 12px}.photo-wrap{width:min(100%,400px);border-radius:9px;box-shadow:0 9px 26px #28485416}.photo-wrap img{max-height:none}.viewer-footer{font-size:11px;padding:13px 20px;border-color:#e5ecef;color:#81959e}.bbox-label{font-size:10px;font-weight:600;border-radius:3px;padding:4px 6px}.bbox{border-radius:3px}.result-panel{gap:18px}.section-card{padding:18px 20px}.section-head h3{font-size:15px;font-weight:600}.section-head span{font-size:11px;color:#91a1a8}.verdict{padding:20px;border-radius:9px;background:#fff5ef;border-color:#f0dbcd}.verdict-kicker{font-size:10px;letter-spacing:1.1px;font-weight:600;color:#b57659}.verdict-count{font-size:34px;color:#b96645;font-weight:650;letter-spacing:-1px}.verdict-copy{font-size:13px;color:#ab806c;line-height:1.8}.verdict-main>.tag{display:none}.missing-item{border-radius:9px;border-color:#f0dfd5;background:#fffaf7;padding:15px;gap:12px}.missing-symbol{background:#fae9dd;color:#b97852;border-radius:6px;width:30px}.missing-name{font-size:15px;color:#975d43;font-weight:650}.missing-detail{font-size:12px;color:#a48777;line-height:1.8}.missing-location{font-size:11px;color:#b48a70;font-weight:500}.inventory{font-size:13px}.inventory th{font-size:11px;color:#8b9da5;font-weight:500;padding:10px 5px;background:#f7fafb}.inventory td{padding:13px 5px;border-color:#edf1f3}.inventory td:first-child{font-weight:500;color:#506975}.state{font-size:10px;border-radius:4px;font-weight:550}.state.missing{color:#b46a4e;background:#fff0e7}.num{font-weight:550;font-variant-numeric:tabular-nums}.samples{margin-top:24px}.sample-grid{padding:18px;gap:16px}.sample-card{border-radius:9px;border-color:#e0e8eb}.sample-card.active{border:2px solid #458c97;box-shadow:0 0 0 2px #458c970c}.sample-thumb{height:155px;background:#edf2f3}.sample-thumb img{object-position:center 40%}.sample-copy{padding:13px 14px}.sample-title{font-size:14px;font-weight:600;color:#3b5662}.sample-sub{font-size:12px;color:#8b9da6}.sample-badge{font-size:10px;background:#234550de;border-radius:4px;padding:5px 8px;top:10px;left:10px}.toast{font-size:13px;border-radius:8px;background:#254650;box-shadow:0 5px 20px #173b4630}.history-count{font-size:11px;color:#8ca1a9;margin-left:8px}.upload-empty{color:#79919c;font-size:13px}.upload-empty strong{font-size:16px;color:#3b5967}@media(max-width:1050px){.workspace{grid-template-columns:1fr}.result-panel{display:grid;grid-template-columns:1fr 1fr}.photo-wrap{width:min(100%,420px)}}@media(max-width:700px){.topbar{padding:0 16px;height:68px}.brand-name{font-size:15px}.brand-sub{font-size:9px}main{padding:22px 14px}.page-head h1{font-size:25px}.result-panel{display:flex}.metric{padding:15px}.metric-value{font-size:29px}.sample-grid{padding:12px;gap:10px}.sample-thumb{height:130px}.image-stage{padding:16px;min-height:0}.sample-title{font-size:13px}.sample-sub{font-size:11px}.card-title{font-size:15px}}
+</style><style>
+:root{--ink:#202a40;--muted:#8b93a4;--line:#e9ecf3;--bg:#f6f7fb;--blue:#5a63d8;--blue-soft:#f0f0ff;--red:#d4714e;--red-soft:#fff7f2;--radius:16px;--shadow:0 6px 25px #29305404}html{scroll-behavior:smooth}body{background:#f6f7fb;color:#202a40;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',sans-serif}.app-navigation{position:fixed;inset:0 auto 0 0;width:218px;background:#fff;border-right:1px solid #e7eaf2;padding:27px 18px;z-index:10;display:flex;flex-direction:column}.app-navigation .brand{display:flex;align-items:center;gap:10px;padding:0 0 34px}.app-navigation .brand-mark{width:36px;height:36px;flex:none;border-radius:11px;background:#5862d5;color:#fff;font-weight:700;box-shadow:0 5px 14px #5862d528}.app-navigation .brand-name{font-size:14px;letter-spacing:-.3px;white-space:nowrap}.app-navigation .brand-sub{font-size:8px;letter-spacing:.5px;max-width:125px;line-height:1.7}.nav-group-label{font-size:11px;color:#a0a7b6;margin:9px 12px 14px}.nav-item{display:flex;align-items:center;gap:12px;padding:13px 14px;color:#7d879b;text-decoration:none;font-size:13px;margin:3px 0;border-radius:9px;transition:.15s}.nav-item>span{font-size:18px;width:20px}.nav-item b{margin-left:auto;font-size:10px;font-weight:500;color:#99a0b2}.nav-item.selected{background:#eeeffd;color:#575fd0;font-weight:650}.nav-item:hover{background:#f4f4fb}.nav-bottom{margin-top:auto;display:flex;gap:10px;align-items:center;border-top:1px solid #eceef5;padding-top:20px}.workspace-avatar{display:grid;place-items:center;background:#eef0f9;border:1px solid #e1e4f3;border-radius:9px;width:34px;height:34px;color:#626cab;font-size:13px}.nav-bottom strong{display:block;font-size:11px;font-weight:550;color:#717b91}.nav-bottom small{display:block;font-size:9px;color:#a2a9b8;margin-top:4px}.topbar{height:66px;margin-left:218px;padding:0 32px;background:#fff;border-bottom:1px solid #e9ecf3}.breadcrumb{font-size:12px;color:#9199aa}.top-right{gap:8px}.top-pill{background:#fafbfe;border-color:#e8ebf3;border-radius:6px;font-size:11px;color:#8c94a4}.top-pill:first-child{background:#f2f8f5;border-color:#e0ede5;color:#6f9981}main{margin-left:218px;max-width:none;padding:30px 30px 40px}.page-head{margin-bottom:24px}.eyebrow{font-size:9px;letter-spacing:1.8px;color:#a3aaba;margin-bottom:7px}h1{font-size:27px;font-weight:650;letter-spacing:-1px;color:#25304a}.subtitle{font-size:12px;color:#9199aa;margin:8px 0 0}.btn{border-color:#e4e7f0;border-radius:9px;font-size:12px;padding:11px 16px;font-weight:550;color:#6f7890;background:#fff}.btn-primary{background:#5b64d7;color:white;border-color:#5b64d7;box-shadow:0 4px 12px #5b64d71a}.btn-primary:hover{background:#4e57c6}.metrics{gap:14px;margin-bottom:22px}.metric{border:1px solid #e9ecf3;box-shadow:none;border-radius:13px;padding:17px 20px;position:relative}.metric-label{font-size:12px;color:#8892a5}.metric-icon{width:27px;height:27px;border-radius:8px;color:#7881ca;background:#f1f2fb}.metric-value{font-size:30px;font-weight:600;line-height:1.2;color:#34405b;letter-spacing:-1px;margin-top:12px}.metric-foot{font-size:10px;color:#a2a9b7;margin-top:7px}.workspace{grid-template-columns:minmax(0,1.38fr) minmax(340px,.85fr);gap:20px;align-items:start}.card{border-color:#e7eaf2;border-radius:15px;box-shadow:0 5px 22px #27325404}.card-head{padding:17px 20px;border-color:#eef0f6}.card-title{font-size:14px;font-weight:600;color:#4c5670}.card-desc{font-size:10px;color:#a0a8b9;margin-top:5px}.tag{font-size:9px;padding:4px 8px;font-weight:500;border-radius:5px}.tag.blue{background:#f2f2fc;color:#9192c7;border-color:#e7e8f5}.tag.red{background:#fff7f1;color:#bd8a6f;border-color:#f4e6da}.viewer-toolbar{padding:10px 17px;background:#fbfcff;border-color:#eef0f6}.file-meta,.view-tools{font-size:10px;color:#a0a8b8}.file-name{font-size:11px;color:#8590a8}.switch{width:29px;height:17px}.switch:after{width:13px;height:13px}.switch.on{background:#8990db}.image-stage{padding:20px;background:#f1f3f8;background-image:radial-gradient(#bdc6d42e .7px,transparent .7px);background-size:10px 10px;min-height:530px}.photo-wrap{width:min(100%,350px);border-radius:8px;box-shadow:0 8px 28px #33466a17}.bbox{border-width:1.5px}.bbox-label{font-size:9px;font-weight:500;padding:3px 5px;border-radius:3px;top:-19px}.viewer-footer{padding:12px 16px;font-size:10px;color:#a1a9b8;border-color:#eef0f6}.legend{gap:10px}.legend-dot{height:6px;width:6px;border-radius:2px}.result-panel{gap:16px}.section-card{padding:17px 18px}.verdict{border-radius:10px;border-color:#f3e2d6;background:linear-gradient(120deg,#fff9f5,#fff4ec);padding:17px}.verdict-kicker{font-size:9px;color:#c59b83;letter-spacing:1.5px}.verdict-count{font-size:30px;font-weight:600;letter-spacing:-1px;color:#ca825e}.verdict-copy{font-size:11px;color:#bfa18f;line-height:1.8}.section-head{margin-bottom:11px}.section-head h3{font-size:13px;color:#606b83;font-weight:550}.section-head span{font-size:10px;color:#aab1be}.missing-item{padding:13px;border-color:#f2e6dc;border-radius:9px;background:#fffcf9;gap:10px}.missing-symbol{height:25px;flex-basis:25px;font-size:12px;border-radius:7px;color:#c7977b;background:#f9ede3}.missing-name{font-size:13px;color:#ab795f;font-weight:550}.missing-detail{font-size:11px;color:#b9a392;line-height:1.8}.missing-location{font-size:10px;color:#b89c84;font-weight:500}.inventory{font-size:11px}.inventory th{font-size:10px;padding:9px 5px;color:#a0a8b8;font-weight:500;background:#fbfcff;border-color:#eef0f6}.inventory td{padding:11px 5px;border-color:#f0f2f7}.inventory td:first-child{color:#77839a;font-weight:500}.num{color:#7b86a0;font-weight:500}.state{font-size:9px;font-weight:500;padding:4px 6px;border-radius:4px}.state.ok{color:#8ba995;background:#f0f7f2}.state.missing{color:#be9277;background:#fff4ea}.state.review{color:#b5a06f;background:#faf7ed}.samples{margin-top:22px}.sample-grid{padding:16px;gap:14px}.sample-card{border-color:#e9ecf3;border-radius:10px;box-shadow:none;transition:.15s}.sample-card:hover{transform:translateY(-2px);box-shadow:0 6px 15px #3344770b}.sample-card.active{border:1.5px solid #959be0;box-shadow:0 0 0 3px #5b64d70a}.sample-thumb{height:125px;filter:saturate(.9)}.sample-copy{padding:12px}.sample-title{font-size:12px;font-weight:550;color:#68748c}.sample-sub{font-size:10px;color:#a2aaba;margin-top:6px}.sample-badge{background:#fffef1e8;color:#7c8296;border-radius:4px;font-size:9px;padding:4px 6px}.history-count{font-size:10px;color:#b2b8c6;margin-left:8px}.toast{background:#414b64;font-size:12px;border-radius:9px}.topbar .dot{width:5px;height:5px}@media(min-width:1700px){main{max-width:1500px;margin-left:auto;margin-right:auto;padding-left:238px}}@media(max-width:1200px){.app-navigation{width:185px;padding:24px 12px}.topbar{margin-left:185px;padding:0 22px}main{margin-left:185px;padding:24px 22px}.workspace{grid-template-columns:minmax(0,1fr) 340px;gap:16px}.photo-wrap{width:min(100%,320px)}.app-navigation .brand-name{font-size:12px}.app-navigation .brand-sub{font-size:7px}.app-navigation .brand-mark{width:31px;height:31px}.brand{gap:7px!important}}@media(max-width:1050px){.workspace{grid-template-columns:1fr}.result-panel{display:grid;grid-template-columns:1fr 1fr}.result-panel .section-card{grid-column:auto}.photo-wrap{width:min(100%,390px)}.image-stage{min-height:0}}@media(max-width:700px){.app-navigation{display:none}.topbar{margin-left:0;padding:0 15px;height:60px}main{margin-left:0;padding:20px 14px}.result-panel{display:flex}.page-head{gap:17px}.page-head h1{font-size:24px}.metrics{gap:9px}.metric{padding:14px}.metric-value{font-size:29px}.sample-grid{padding:11px;gap:10px}.sample-thumb{height:120px}.photo-wrap{width:min(100%,330px)}}
+</style><style>.card-title{font-size:16px;color:#394862}.card-desc{font-size:12px;color:#7a879c}.metric-label{font-size:13px;color:#718097}.metric-foot{font-size:11px;color:#8b96a8}.file-meta,.view-tools{font-size:12px;color:#7a879c}.file-name{font-size:12px;color:#697b96}.section-head h3{font-size:15px;color:#4d5f7b}.section-head span{font-size:11px;color:#8591a5}.inventory{font-size:13px}.inventory th{font-size:11px;color:#8591a5}.inventory td{padding:12px 5px}.inventory td:first-child{color:#566b89}.num{color:#586d8d}.state{font-size:11px}.state.ok{color:#548b6b}.state.missing{color:#b56e47}.state.review{color:#a08b50}.verdict-count{color:#be754b;font-size:34px}.verdict-copy{font-size:13px;color:#a18371}.missing-name{font-size:14px;color:#a26c4c}.missing-detail{font-size:12px;color:#a08a79}.missing-location{font-size:11px;color:#a08a73}.sample-title{font-size:14px;color:#536985}.sample-sub{font-size:12px;color:#8c98ab}.sample-thumb{height:145px}.viewer-footer{font-size:11px}.nav-item{font-size:14px}.nav-group-label{color:#8793a6}.subtitle{font-size:14px;color:#8290a5}</style>
+<style>
+.breadcrumb,.top-pill,.nav-group-label,.nav-bottom strong,.nav-bottom small,.metric-foot,.card-desc,.file-meta,.file-name,.view-tools,.viewer-footer,.section-head span,.missing-detail,.missing-location,.sample-sub,.history-count,.bottom-note{font-size:13px;color:#66758b}
+.app-navigation .brand-sub{font-size:10px;color:#68758a}
+.eyebrow,.verdict-kicker,.sample-badge{font-size:12px}
+.btn,.metric-label,.inventory,.sample-title,.verdict-copy{font-size:15px}
+.card-title,.section-head h3,.missing-name{font-size:16px}
+.inventory th,.state,.tag{font-size:13px}
+.inventory th,.inventory td{padding:12px 8px}
+.metric{padding:20px 22px}.card-head{padding:20px 22px}.section-card{padding:20px 22px}
+.viewer-toolbar,.viewer-footer{padding:14px 20px}.sample-copy{padding:14px}
+.verdict-copy,.missing-detail,.sample-sub{line-height:1.65}
+.workspace{align-items:stretch}
+.workspace>.card,.workspace>.result-panel{min-height:0}
+.workspace>.card{display:flex;flex-direction:column}
+.workspace>.card .image-stage{flex:1;min-height:360px}
+.photo-wrap{width:min(100%,500px)}
+.view-tools{flex-wrap:wrap;gap:8px 14px}
+.view-toggle{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.bbox.red{border:3px solid #e12638;background:rgba(225,38,56,.15);box-shadow:0 0 0 3px #ffffffd9,0 0 0 5px #e1263840}
+.bbox.red .bbox-label{top:-29px;left:-3px;background:#c91429;color:#fff;font-size:13px;font-weight:750;line-height:1.35;padding:5px 9px;box-shadow:0 2px 6px #67102035}
+main{padding-top:20px;padding-bottom:24px}
+.page-head{margin-bottom:16px}.metrics{margin-bottom:16px;gap:12px}
+.metric{padding:12px 16px}.metric-value{font-size:28px;margin-top:6px}.metric-foot{margin-top:3px}
+.workspace{gap:16px}.card-head{padding:12px 16px}.card-desc{margin-top:3px}
+.viewer-toolbar,.viewer-footer{padding:9px 14px}.image-stage{padding:14px}
+.workspace>.card .image-stage{min-height:300px}
+.photo-wrap{width:min(100%,450px)}
+.result-panel{gap:12px}.section-card{padding:12px 16px}
+.section-head{margin-bottom:8px}.verdict{padding:12px 14px}.verdict-count{font-size:30px}
+.verdict-copy{margin-top:6px}.missing-item{padding:10px 12px}.missing-location{margin-top:4px}
+.inventory th,.inventory td{padding:8px 6px}.samples{margin-top:16px}
+.sample-grid{padding:12px;gap:12px}.sample-thumb{height:110px}.sample-copy{padding:9px 12px}
+.result-panel{display:flex;flex-direction:column;gap:16px}
+.result-panel>#inventoryPanel{flex:1}
+.result-panel>.card{min-height:0}
+.result-panel>#inventoryPanel{overflow:auto}
+@media(max-width:1200px){.app-navigation .brand-sub{font-size:10px}}
+@media(max-width:1050px){.workspace{align-items:start}.workspace>.card{display:block}.workspace>.card .image-stage{min-height:420px}.photo-wrap{width:min(100%,500px)}.result-panel{height:auto;grid-template-rows:auto auto}.result-panel>#inventoryPanel{overflow:visible}}
+@media(max-width:700px){.topbar{gap:8px}.breadcrumb{font-size:12px}.top-pill{font-size:12px;padding:6px 8px}.actions .btn{min-height:44px}.card-head{padding:16px}.section-card{padding:16px}.inventory th,.inventory td{padding:10px 4px}.inventory{font-size:14px}.inventory th,.state{font-size:12px}.viewer-toolbar,.viewer-footer{padding:12px 14px}.metric{padding:15px}.metric-foot{line-height:1.4}.workspace>.card .image-stage{min-height:0}}
+@media(max-width:700px){main{padding-top:16px;padding-bottom:20px}.page-head{gap:12px;margin-bottom:14px}.metric{padding:11px 12px}.card-head,.section-card{padding:12px}.viewer-toolbar,.viewer-footer{padding:9px 12px}.inventory th,.inventory td{padding:8px 4px}}
+</style></head>
+<body><nav aria-label="工作区导航" class="app-navigation"><div class="brand">
+<div class="brand-mark">T</div>
+<div>
+<div class="brand-name">TOOLBOX / 工具盘点</div>
+<div class="brand-sub">VISION SYSTEM — LOCAL WORKSPACE</div>
+</div>
+</div><div class="nav-group-label">工作空间</div><a class="nav-item selected" href="#inspection"><span>◈</span> 视觉盘点 <b>01</b></a><a class="nav-item" href="#records"><span>▤</span> 历史记录 <b>04</b></a><a class="nav-item" href="#inventoryPanel"><span>▦</span> 工具清单</a><div class="nav-bottom"><span class="workspace-avatar">M</span><div><strong>维修作业工作区</strong><small>本地项目 / TOOLBOX</small></div></div></nav>
+<header class="topbar"><div class="breadcrumb">工作空间　/　视觉盘点</div>
+
+<div class="top-right">
+<span class="top-pill"><i class="dot"></i> 盘点工作区</span>
+<span class="top-pill">清单 V1.0</span>
+</div>
+</header>
+<main>
+<section class="page-head">
+<div>
+<div class="eyebrow">INSPECTION WORKSPACE</div>
+<h1>视觉盘点工作台</h1>
+</div>
+<div class="actions">
+<input accept="image/jpeg,image/png,image/webp" hidden="" id="fileInput" type="file"/>
+<button class="btn" id="uploadBtn">＋ 上传现场照片</button>
+<button class="btn btn-primary" id="reanalyzeBtn">运行盘点 ↗</button>
+</div>
+</section>
+<section class="metrics">
+<div class="metric">
+<div class="metric-top"><span class="metric-label">标准工具数量</span><span class="metric-icon">▤</span></div>
+<div class="metric-value" id="expectedMetric">52</div>
+<div class="metric-foot">工具清单 / V1.0</div>
+</div>
+<div class="metric">
+<div class="metric-top"><span class="metric-label">本次识别数量</span><span class="metric-icon">⌕</span></div>
+<div class="metric-value" id="observedMetric">51</div>
+<div class="metric-foot">当前盘点记录</div>
+</div>
+<div class="metric">
+<div class="metric-top"><span class="metric-label">缺失数量</span><span class="metric-icon" style="color:#d93b45;background:#fff0f0">!</span></div>
+<div class="metric-value" id="missingMetric" style="color:#d93b45">1</div>
+<div class="metric-foot">待补齐工具</div>
+</div>
+<div class="metric">
+<div class="metric-top"><span class="metric-label">待人工复核</span><span class="metric-icon" style="color:#b7791f;background:#fff7e7">◷</span></div>
+<div class="metric-value" id="reviewMetric">1</div>
+<div class="metric-foot">待核验项目</div>
+</div>
+</section>
+<section class="workspace" id="inspection">
+<div class="card">
+<div class="card-head">
+<div>
+<div class="card-title">检测视图</div>
+<div class="card-desc">绿色：识别到的工具 · 红色：缺失位置 · 黄色：需人工复核</div>
+</div>
+<span class="tag blue" id="modeTag">历史记录</span>
+</div>
+<div class="viewer-toolbar">
+<div class="file-meta">
+<span>▧</span>
+<span class="file-name" id="fileName">missing-one-socket.png</span>
+<span id="imageDimensions">1279 × 1706</span>
+</div>
+<div class="view-tools">
+<span class="view-toggle">缺失标注 <button aria-label="显示缺失标注" aria-pressed="true" class="switch on" id="overlaySwitch"></button></span>
+<span class="view-toggle">已识别及复核标注 <button aria-label="显示已识别及复核标注" aria-pressed="false" class="switch" id="recognizedSwitch"></button></span>
+</div>
+</div>
+<div class="image-stage">
+<div class="photo-wrap" id="photoWrap">
+<img alt="工具盒样例图片" id="mainImage" src="/samples/missing_one_socket.jpg"/>
+<div class="overlay" id="overlay"></div>
+<div class="upload-empty" id="uploadEmpty">
+<strong>图片已上传，等待真实识别</strong>
+              当前原型未连接 Qwen API。此处不会显示虚构的检测框或盘点结果。
+            </div>
+</div>
+</div>
+<div class="viewer-footer">
+<div class="legend">
+<span class="legend-item"><i class="legend-dot"></i> 已识别工具</span>
+<span class="legend-item"><i class="legend-dot red"></i> 缺失 / 空槽位</span>
+<span class="legend-item"><i class="legend-dot amber"></i> 需人工复核</span>
+</div>
+<span id="sourceNote">数据来源：内置示例记录</span>
+</div>
+</div>
+<aside class="result-panel">
+<div class="card">
+<div class="card-head">
+<div>
+<div class="card-title">盘点结论</div>
+<div class="card-desc">基于当前记录与暂定标准清单</div>
+</div>
+<span class="tag red" id="verdictTag">发现缺失</span>
+</div>
+<div class="section-card">
+<div class="verdict" id="verdictBox">
+<div class="verdict-kicker" id="verdictKicker">INCOMPLETE · 需补齐</div>
+<div class="verdict-main">
+<div class="verdict-count" id="verdictCount">缺少 1 件</div>
+<span class="tag red">异常</span>
+</div>
+<div class="verdict-copy" id="verdictCopy">发现 1 项缺失，请根据图中红色位置检查工具盒。</div>
+</div>
+</div>
+<div class="section-card" style="padding-top:0">
+<div class="section-head"><h3>缺失项定位</h3><span id="missingCountLabel">1 项待补齐</span></div>
+<div class="missing-list" id="missingList"></div>
+</div>
+</div>
+<div class="card section-card" id="inventoryPanel">
+<div class="section-head">
+<h3>工具清单核对</h3>
+<span>标准数量为暂定值</span>
+</div>
+<table class="inventory">
+<thead><tr><th>工具类别</th><th>标准</th><th>识别</th><th>差异</th><th>状态</th></tr></thead>
+<tbody id="inventoryBody"></tbody>
+</table>
+</div>
+</aside>
+</section>
+<section class="card samples" id="records">
+<div class="card-head">
+<div>
+<div class="card-title">历史记录 <span class="history-count">04</span></div>
+<div class="card-desc">选择盘点记录，回看工具清单、缺失项与图像标注。</div>
+</div>
+<span class="tag">4 条记录</span>
+</div>
+<div class="sample-grid" id="sampleGrid"><button class="sample-card" data-sample="complete"><span class="sample-badge">正常记录</span><div class="sample-thumb"><img alt="工具齐全" src="/samples/complete_reference.jpg"/></div><div class="sample-copy"><div class="sample-title">工具齐全</div><div class="sample-sub">清单数量一致</div></div></button><button class="sample-card active" data-sample="socket"><span class="sample-badge">缺失记录</span><div class="sample-thumb"><img alt="套筒缺失" src="/samples/missing_top_socket.png"/></div><div class="sample-copy"><div class="sample-title">套筒缺失</div><div class="sample-sub">套筒 · 缺少 1 件</div></div></button><button class="sample-card" data-sample="bits"><span class="sample-badge">缺失记录</span><div class="sample-thumb"><img alt="大号手柄缺失" src="/samples/missing_large_handle.png"/></div><div class="sample-copy"><div class="sample-title">大号手柄缺失</div><div class="sample-sub">大号螺丝刀手柄组件 · 缺少 1 件</div></div></button><button class="sample-card" data-sample="extension"><span class="sample-badge">缺失记录</span><div class="sample-thumb"><img alt="小号手柄缺失" src="/samples/missing_small_handle.png"/></div><div class="sample-copy"><div class="sample-title">小号手柄缺失</div><div class="sample-sub">小号螺丝刀手柄组件 · 缺少 1 件</div></div></button></div></section>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+    const inventoryBase = [
+      { id: "large", name: "大号螺丝刀手柄组件", expected: 1, unit: "件" },
+      { id: "small", name: "小号螺丝刀手柄组件", expected: 1, unit: "件" },
+      { id: "socket", name: "套筒", expected: 9, unit: "个" },
+      { id: "bits", name: "批头（暂定）", expected: 40, unit: "枚" },
+      { id: "short", name: "短延长杆 / 转接杆", expected: 1, unit: "根" },
+      { id: "long", name: "长延长杆", expected: 1, unit: "根" }
+    ];
+    const scenarios = {"complete": {"image": "/samples/complete_reference.jpg", "file": "complete_reference.jpg", "dims": "1279 × 1706", "observed": {"large": 1, "small": 1, "socket": 9, "bits": 40, "short": 1, "long": 1}, "missing": [], "review": 1, "status": "complete", "source": "数据来源：内置示例记录", "boxes": [["large", 14, 8.5, 26.5, 80, "大号手柄 ×1", "green"], ["small", 42, 9.5, 13, 55.5, "小号手柄 ×1", "green"], ["socket", 72, 10, 12, 62, "套筒区域", "green"], ["bits", 55, 10, 17, 62, "批头区域", "amber"], ["short", 42, 73, 38, 7, "短延长杆 ×1", "green"], ["long", 42, 81, 38, 7, "长延长杆 ×1", "green"]]}, "socket": {"image": "/samples/missing_top_socket.png", "file": "missing_top_socket.png", "dims": "1086 × 1448", "observed": {"large": 1, "small": 1, "socket": 8, "bits": 40, "short": 1, "long": 1}, "missing": [{"id": "socket", "name": "套筒", "expected": 9, "observed": 8, "count": 1, "unit": "个", "location": "右上方首个套筒收纳槽"}], "review": 1, "status": "missing", "source": "数据来源：内置示例记录", "boxes": [["large", 14, 8.5, 26.5, 80, "大号手柄 ×1", "green"], ["small", 42, 9.5, 13, 55.5, "小号手柄 ×1", "green"], ["socket", 72, 10, 12, 62, "套筒区域", "green"], ["bits", 55, 10, 17, 62, "批头区域", "amber"], ["short", 42, 73, 38, 7, "短延长杆 ×1", "green"], ["long", 42, 81, 38, 7, "长延长杆 ×1", "green"], ["missing", 73.0, 10.0, 11.0, 8.5, "缺失位置", "red"]]}, "bits": {"image": "/samples/missing_large_handle.png", "file": "missing_large_handle.png", "dims": "1086 × 1448", "observed": {"large": 0, "small": 1, "socket": 9, "bits": 40, "short": 1, "long": 1}, "missing": [{"id": "large", "name": "大号螺丝刀手柄组件", "expected": 1, "observed": 0, "count": 1, "unit": "件", "location": "左侧大号手柄收纳槽"}], "review": 1, "status": "missing", "source": "数据来源：内置示例记录", "boxes": [["small", 42, 9.5, 13, 55.5, "小号手柄 ×1", "green"], ["socket", 72, 10, 12, 62, "套筒区域", "green"], ["bits", 55, 10, 17, 62, "批头区域", "amber"], ["short", 42, 73, 38, 7, "短延长杆 ×1", "green"], ["long", 42, 81, 38, 7, "长延长杆 ×1", "green"], ["missing", 14.0, 8.5, 26.5, 80.0, "缺失位置", "red"]]}, "extension": {"image": "/samples/missing_small_handle.png", "file": "missing_small_handle.png", "dims": "1086 × 1448", "observed": {"large": 1, "small": 0, "socket": 9, "bits": 40, "short": 1, "long": 1}, "missing": [{"id": "small", "name": "小号螺丝刀手柄组件", "expected": 1, "observed": 0, "count": 1, "unit": "件", "location": "中部小号手柄收纳槽"}], "review": 1, "status": "missing", "source": "数据来源：内置示例记录", "boxes": [["large", 14, 8.5, 26.5, 80, "大号手柄 ×1", "green"], ["socket", 72, 10, 12, 62, "套筒区域", "green"], ["bits", 55, 10, 17, 62, "批头区域", "amber"], ["short", 42, 73, 38, 7, "短延长杆 ×1", "green"], ["long", 42, 81, 38, 7, "长延长杆 ×1", "green"], ["missing", 42.0, 9.5, 13.0, 55.5, "缺失位置", "red"]]}};
+
+    let activeScenario = "socket";
+    let customFileUrl = null;
+    let isCustomUpload = false;
+    let overlayOn = true;
+    let recognizedOn = false;
+    let toastTimer = null;
+
+    const $ = (id) => document.getElementById(id);
+    const image = $("mainImage");
+    const overlay = $("overlay");
+
+    function toast(message) {
+      const el = $("toast");
+      el.textContent = message;
+      el.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove("show"), 3200);
+    }
+
+    function drawBoxes(boxes) {
+      overlay.innerHTML = "";
+      if (isCustomUpload) return;
+      boxes.forEach(([id,x,y,w,h,label,kind]) => {
+        if (kind === "red" ? !overlayOn : !recognizedOn) return;
+        const box = document.createElement("div");
+        box.className = "bbox" + (kind === "red" ? " red" : kind === "amber" ? " amber" : "");
+        box.style.left = x + "%";
+        box.style.top = y + "%";
+        box.style.width = w + "%";
+        box.style.height = h + "%";
+        if (label) {
+          const tag = document.createElement("span");
+          tag.className = "bbox-label";
+          tag.textContent = label;
+          box.appendChild(tag);
+        }
+        overlay.appendChild(box);
+      });
+    }
+
+    function renderTable(s) {
+      const body = $("inventoryBody");
+      body.innerHTML = "";
+      let expectedTotal = 0, observedTotal = 0;
+      inventoryBase.forEach(item => {
+        const observed = s.observed[item.id] ?? 0;
+        const diff = Math.max(0, item.expected - observed);
+        expectedTotal += item.expected;
+        observedTotal += observed;
+        const isReview = item.id === "bits";
+        const tr = document.createElement("tr");
+        const state = diff > 0
+          ? `<span class="state missing">缺 ${diff}${item.unit}</span>`
+          : isReview ? `<span class="state review">需复核</span>` : `<span class="state ok">正常</span>`;
+        tr.innerHTML = `
+          <td>${item.name}</td>
+          <td class="num">${item.id === "bits" ? "约 " : ""}${item.expected}</td>
+          <td class="num">${observed}</td>
+          <td class="num" style="color:${diff ? "#c4313b" : "#8490a2"}">${diff ? "-" + diff : "—"}</td>
+          <td>${state}</td>`;
+        body.appendChild(tr);
+      });
+      $("expectedMetric").textContent = expectedTotal;
+      $("observedMetric").textContent = observedTotal;
+      const missingTotal = Object.entries(s.observed).reduce((sum,[id,count]) => {
+        const item = inventoryBase.find(x => x.id === id);
+        return sum + Math.max(0, (item?.expected ?? 0) - count);
+      },0);
+      $("missingMetric").textContent = missingTotal;
+      $("reviewMetric").textContent = s.review;
+    }
+
+    function renderMissing(s) {
+      const list = $("missingList");
+      list.innerHTML = "";
+      if (!s.missing.length) {
+        list.innerHTML = `<div class="missing-item" style="border-color:#c9efdd;background:#f7fdf9">
+          <div class="missing-symbol" style="background:#ddf6e9;color:#147b59">✓</div>
+          <div><div class="missing-name" style="color:#176b4e">暂未发现缺失</div>
+          <div class="missing-detail">当前记录与暂定标准清单一致；批头数量仍建议人工确认。</div></div></div>`;
+        $("missingCountLabel").textContent = "0 项缺失";
+        return;
+      }
+      $("missingCountLabel").textContent = s.missing.length + " 项待补齐";
+      s.missing.forEach(item => {
+        const el = document.createElement("div");
+        el.className = "missing-item";
+        el.innerHTML = `<div class="missing-symbol">!</div>
+          <div><div class="missing-name">${item.name} · 缺少 ${item.count}${item.unit}</div>
+          <div class="missing-detail">标准 ${item.expected}${item.unit}，识别到 ${item.observed}${item.unit}。请检查对应收纳位置。</div>
+          <span class="missing-location">⌖ ${item.location}</span></div>`;
+        list.appendChild(el);
+      });
+    }
+
+    let scenarioRequest=0;
+    async function renderScenario(id) {
+      const request=++scenarioRequest;
+      const chosen=scenarios[id];
+      if(!chosen)return;
+      const ids={complete:'complete',socket:'missing_socket',bits:'missing_large_handle',extension:'missing_small_handle'};
+      const classes={large:'large_driver_handle',small:'small_driver_handle',socket:'socket',bits:'bit_head',short:'short_extension_adapter',long:'long_extension_bar'};
+      $('reanalyzeBtn').disabled=true;
+      try{
+        const picture=await fetch(chosen.image);
+        if(!picture.ok)throw new Error('参考照片加载失败');
+        const form=new FormData();
+        const blob=await picture.blob();
+        form.append('image',blob,chosen.image.split('/').pop());
+        form.append('sampleId',ids[id]);
+        form.append('mode','mock');
+        const response=await fetch('/api/analyze',{method:'POST',body:form});
+        const payload=await response.json();
+        if(!response.ok)throw new Error(payload.error?.message||'盘点请求失败');
+        if(request!==scenarioRequest)return;
+        for(const [key,classId] of Object.entries(classes)){
+          const row=payload.inventory.find(x=>x.classId===classId);
+          if(row)chosen.observed[key]=row.observedCount;
+        }
+        chosen.dims=payload.image.width+' × '+payload.image.height;
+      }catch(error){if(request===scenarioRequest)toast(error.message||'请求失败，请重试');return}
+      finally{if(request===scenarioRequest)$('reanalyzeBtn').disabled=false}
+      const s = scenarios[id];
+      if (!s) return;
+      activeScenario = id;
+      isCustomUpload = false;
+      $("uploadEmpty").style.display = "none";
+      image.style.display = "block";
+      image.src = s.image;
+      $("fileName").textContent = s.file;
+      $("imageDimensions").textContent = s.dims;
+      $("sourceNote").textContent = s.source;
+      $("modeTag").textContent = "历史记录";
+      $("modeTag").className = "tag blue";
+      $("reanalyzeBtn").textContent = "运行盘点 ↗";
+
+      const verdictBox = $("verdictBox");
+      const verdictTag = $("verdictTag");
+      verdictBox.className = "verdict";
+      if (s.status === "complete") {
+        verdictBox.classList.add("complete");
+        verdictTag.className = "tag green";
+        verdictTag.textContent = "清单齐全";
+        $("verdictKicker").textContent = "COMPLETE · 暂未发现缺失";
+        $("verdictCount").textContent = "0 项缺失";
+        $("verdictCopy").textContent = "当前记录与暂定清单一致。批头数量仍为估算值，正式盘点需人工确认。";
+      } else {
+        verdictTag.className = "tag red";
+        verdictTag.textContent = "发现缺失";
+        const total = s.missing.reduce((n,x) => n + x.count, 0);
+        $("verdictKicker").textContent = "INCOMPLETE · 需补齐";
+        $("verdictCount").textContent = `缺少 ${total} 件`;
+        $("verdictCopy").textContent = `发现 ${s.missing.length} 项缺失，红色标记对应本条记录中的缺失位置。`;
+      }
+      renderTable(s);
+      renderMissing(s);
+      drawBoxes(s.boxes);
+      document.querySelectorAll(".sample-card").forEach(btn => btn.classList.toggle("active", btn.dataset.sample === id));
+    }
+
+    $("sampleGrid").addEventListener("click", (event) => {
+      const btn = event.target.closest(".sample-card");
+      if (!btn) return;
+      if (customFileUrl) { URL.revokeObjectURL(customFileUrl); customFileUrl = null; }
+      renderScenario(btn.dataset.sample);
+    });
+
+    $("overlaySwitch").addEventListener("click", () => {
+      overlayOn = !overlayOn;
+      $("overlaySwitch").classList.toggle("on", overlayOn);
+      $("overlaySwitch").setAttribute("aria-pressed", String(overlayOn));
+      drawBoxes(scenarios[activeScenario]?.boxes ?? []);
+    });
+
+    $("recognizedSwitch").addEventListener("click", () => {
+      recognizedOn = !recognizedOn;
+      $("recognizedSwitch").classList.toggle("on", recognizedOn);
+      $("recognizedSwitch").setAttribute("aria-pressed", String(recognizedOn));
+      drawBoxes(scenarios[activeScenario]?.boxes ?? []);
+    });
+
+    $("uploadBtn").addEventListener("click", () => $("fileInput").click());
+    $("fileInput").addEventListener("change", (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (!["image/jpeg","image/png","image/webp"].includes(file.type)) {
+        toast("仅支持 JPG、PNG、WEBP 图片。");
+        event.target.value = "";
+        return;
+      }
+      if (file.size > 7 * 1024 * 1024) {
+        toast("样例页面限制图片不超过 7 MB。");
+        event.target.value = "";
+        return;
+      }
+      if (customFileUrl) URL.revokeObjectURL(customFileUrl);
+      customFileUrl = URL.createObjectURL(file);
+      isCustomUpload = true; scenarioRequest++; $("reanalyzeBtn").disabled=false;
+      image.src = customFileUrl;
+      image.style.display = "block";
+      $("uploadEmpty").style.display = "block";
+      overlay.innerHTML = "";
+      $("fileName").textContent = file.name;
+      $("imageDimensions").textContent = "自定义上传";
+      $("sourceNote").textContent = "来源：用户上传 · 尚未调用模型";
+      $("modeTag").textContent = "待真实 API 分析";
+      $("modeTag").className = "tag";
+      $("verdictBox").className = "verdict review";
+      $("verdictTag").className = "tag";
+      $("verdictTag").textContent = "等待识别";
+      $("verdictKicker").textContent = "WAITING · 未产生识别结论";
+      $("verdictCount").textContent = "待分析";
+      $("verdictCopy").textContent = "图片已上传并完成预览。当前原型未连接 Qwen-VL，因此不会给出虚构的缺失判断。";
+      $("missingList").innerHTML = `<div class="missing-item" style="border-color:#f1dfb8;background:#fffaf0">
+        <div class="missing-symbol" style="background:#fff0cf;color:#9b691b">…</div>
+        <div><div class="missing-name" style="color:#805915">尚未执行真实识别</div>
+        <div class="missing-detail">接入 Qwen API 后，点击分析即可返回工具框、数量和缺失结论。</div></div></div>`;
+      $("missingCountLabel").textContent = "待分析";
+      $("inventoryBody").innerHTML = `<tr><td colspan="5" style="color:#8994a5;padding:18px 5px">自定义图片尚未识别，不显示模拟数量。</td></tr>`;
+      $("expectedMetric").textContent = "53";
+      $("observedMetric").textContent = "—";
+      $("missingMetric").textContent = "—";
+      $("reviewMetric").textContent = "—";
+      document.querySelectorAll(".sample-card").forEach(btn => btn.classList.remove("active"));
+      toast("图片预览已更新。此原型未连接 Qwen API，不会生成模拟识别结果。");
+    });
+
+    $("reanalyzeBtn").addEventListener("click", () => {
+      if (isCustomUpload) {
+        toast("真实 Qwen API 尚未接入：当前只完成图片预览，不会伪造识别结果。");
+        return;
+      }
+      renderScenario(activeScenario);
+      toast("盘点记录已更新。");
+    });
+
+    // Initial sample: a missing socket, so the primary UI shows the key missing-item experience.
+    renderScenario("socket");
+  </script>
+</body>
+</html>
+

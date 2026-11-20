@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b1424" />
+  <title>工具盒完整性检查</title>
+  <style>
+    :root {
+      --navy: #0b1424;
+      --navy-2: #12213a;
+      --ink: #172033;
+      --muted: #68758a;
+      --line: #e5eaf1;
+      --panel: #ffffff;
+      --bg: #f4f7fb;
+      --blue: #2463eb;
+      --blue-soft: #edf3ff;
+      --green: #15966a;
+      --green-soft: #e9f8f1;
+      --red: #d93b45;
+      --red-soft: #fff0f0;
+      --amber: #b7791f;
+      --amber-soft: #fff7e7;
+      --shadow: 0 12px 32px rgba(21, 34, 58, .07);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: Inter, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    .topbar {
+      height: 70px;
+      background: var(--navy);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(18px, 4vw, 64px);
+      gap: 20px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark {
+      width: 38px; height: 38px; border-radius: 12px;
+      display: grid; place-items: center;
+      background: linear-gradient(145deg, #f5a623, #e77818);
+      color: #172033; font-weight: 900; font-size: 17px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
+    }
+    .brand-name { font-size: 15px; font-weight: 750; letter-spacing: .02em; }
+    .brand-sub { color: #9eacc2; font-size: 10px; letter-spacing: .16em; margin-top: 3px; }
+    .top-right { display: flex; align-items: center; gap: 10px; color: #c2ccda; font-size: 12px; }
+    .top-pill {
+      display: inline-flex; align-items: center; gap: 7px;
+      border: 1px solid rgba(255,255,255,.16);
+      padding: 7px 11px; border-radius: 999px;
+      color: #e8edf5; background: rgba(255,255,255,.05);
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #f3b84a; }
+    main { max-width: 1540px; margin: 0 auto; padding: 32px clamp(16px, 3.5vw, 54px) 50px; }
+    .page-head {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      gap: 24px; margin-bottom: 24px; flex-wrap: wrap;
+    }
+    .eyebrow { color: var(--blue); font-size: 11px; font-weight: 800; letter-spacing: .15em; margin-bottom: 9px; }
+    h1 { margin: 0; font-size: clamp(26px, 3vw, 36px); letter-spacing: -.035em; line-height: 1.15; }
+    .subtitle { color: var(--muted); margin: 10px 0 0; font-size: 14px; }
+    .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .btn {
+      border: 1px solid var(--line); background: #fff; color: #253148;
+      padding: 11px 16px; border-radius: 11px; font-size: 13px; font-weight: 700;
+      transition: .18s ease; box-shadow: 0 2px 6px rgba(20,30,50,.03);
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 7px 18px rgba(20,30,50,.09); }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: white; }
+    .btn-dark { background: var(--navy); border-color: var(--navy); color: white; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+    .notice {
+      display: flex; gap: 11px; align-items: flex-start;
+      padding: 13px 16px; border: 1px solid #f2dcae; background: #fff9eb;
+      color: #805915; border-radius: 13px; font-size: 12px; line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    .notice strong { color: #69460d; }
+    .notice-icon { font-size: 17px; line-height: 1; }
+    .metrics {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px; margin-bottom: 18px;
+    }
+    .metric {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 15px;
+      padding: 17px 18px; box-shadow: 0 4px 14px rgba(20,30,50,.025);
+    }
+    .metric-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .metric-label { color: var(--muted); font-size: 12px; font-weight: 650; }
+    .metric-icon {
+      width: 29px; height: 29px; border-radius: 9px; display: grid; place-items: center;
+      color: var(--blue); background: var(--blue-soft); font-size: 14px; font-weight: 800;
+    }
+    .metric-value { font-size: 29px; font-weight: 800; letter-spacing: -.04em; margin-top: 10px; }
+    .metric-foot { color: #8a96a8; font-size: 11px; margin-top: 3px; }
+    .workspace {
+      display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(340px, .85fr);
+      gap: 18px; align-items: start;
+    }
+    .card {
+      background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+      box-shadow: var(--shadow); overflow: hidden;
+    }
+    .card-head {
+      padding: 17px 20px; display: flex; justify-content: space-between; align-items: center;
+      gap: 14px; border-bottom: 1px solid var(--line);
+    }
+    .card-title { font-size: 14px; font-weight: 800; }
+    .card-desc { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .tag {
+      display: inline-flex; align-items: center; gap: 6px; border-radius: 999px;
+      padding: 6px 9px; font-size: 10px; font-weight: 800; white-space: nowrap;
+      color: #8b5a10; background: var(--amber-soft); border: 1px solid #f1dfb8;
+    }
+    .tag.blue { color: #2558bd; background: var(--blue-soft); border-color: #dbe6ff; }
+    .tag.green { color: #147b59; background: var(--green-soft); border-color: #c9efdd; }
+    .tag.red { color: #b62e38; background: var(--red-soft); border-color: #f6cfd2; }
+    .viewer-toolbar {
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
+      padding: 12px 18px; background: #fbfcfe; border-bottom: 1px solid var(--line);
+      flex-wrap: wrap;
+    }
+    .file-meta { display: flex; align-items: center; gap: 8px; min-width: 0; color: #59677d; font-size: 11px; }
+    .file-name { color: #253148; font-weight: 750; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 230px; }
+    .view-tools { display: flex; gap: 8px; align-items: center; color: #68758a; font-size: 11px; }
+    .switch {
+      border: 0; background: #d9e0eb; border-radius: 999px; width: 34px; height: 19px;
+      padding: 2px; display: inline-flex; align-items: center; transition: .2s;
+    }
+    .switch::after { content: ""; width: 15px; height: 15px; border-radius: 50%; background: white; transition: .2s; box-shadow: 0 1px 3px #0002; }
+    .switch.on { background: var(--blue); justify-content: flex-end; }
+    .image-stage {
+      background: #e9edf3; padding: 20px; display: grid; place-items: center;
+      min-height: 570px; position: relative;
+    }
+    .photo-wrap {
+      position: relative; width: min(100%, 470px); border-radius: 10px;
+      overflow: hidden; background: #fff; box-shadow: 0 10px 30px rgba(15,25,40,.18);
+      line-height: 0;
+    }
+    .photo-wrap img { display: block; width: 100%; height: auto; max-height: 700px; object-fit: contain; }
+    .overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .bbox { position: absolute; border: 2px solid #19a66f; background: rgba(25,166,111,.06); border-radius: 5px; }
+    .bbox.red { border-color: #e13f4b; background: rgba(225,63,75,.10); border-style: dashed; }
+    .bbox.amber { border-color: #d59a28; background: rgba(213,154,40,.10); border-style: dashed; }
+    .bbox-label {
+      position: absolute; left: -2px; top: -22px; max-width: 190px;
+      background: #15966a; color: white; padding: 4px 7px; border-radius: 5px 5px 5px 0;
+      font-size: 10px; line-height: 1.2; font-weight: 800; white-space: nowrap;
+    }
+    .bbox.red .bbox-label { background: #d93b45; }
+    .bbox.amber .bbox-label { background: #b7791f; }
+    .viewer-footer {
+      display: flex; justify-content: space-between; gap: 10px; padding: 12px 18px;
+      border-top: 1px solid var(--line); color: #8490a2; font-size: 10px;
+    }
+    .legend { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 2px; background: var(--green); }
+    .legend-dot.red { background: var(--red); }
+    .legend-dot.amber { background: #d59a28; }
+    .result-panel { display: flex; flex-direction: column; gap: 14px; }
+    .verdict {
+      padding: 19px; border-radius: 16px; background: var(--red-soft);
+      border: 1px solid #f4c9cd;
+    }
+    .verdict.complete { background: var(--green-soft); border-color: #c9efdd; }
+    .verdict.review { background: var(--amber-soft); border-color: #f1dfb8; }
+    .verdict-kicker { font-size: 11px; font-weight: 800; letter-spacing: .1em; color: #b62e38; }
+    .verdict.complete .verdict-kicker { color: #147b59; }
+    .verdict.review .verdict-kicker { color: #9b691b; }
+    .verdict-main { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; margin-top: 8px; }
+    .verdict-count { font-size: 34px; font-weight: 900; letter-spacing: -.05em; color: #b62e38; line-height: 1; }
+    .verdict.complete .verdict-count { color: #147b59; }
+    .verdict.review .verdict-count { color: #9b691b; }
+    .verdict-copy { color: #8b3d43; font-size: 12px; line-height: 1.55; margin-top: 10px; }
+    .verdict.complete .verdict-copy { color: #267357; }
+    .verdict.review .verdict-copy { color: #8a641f; }
+    .missing-list { display: flex; flex-direction: column; gap: 9px; }
+    .missing-item {
+      border: 1px solid #f1d1d4; background: #fffafa; border-radius: 13px;
+      padding: 13px 14px; display: flex; gap: 12px; align-items: flex-start;
+    }
+    .missing-symbol {
+      flex: 0 0 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+      background: #ffe3e5; color: #c4313b; font-weight: 900; font-size: 15px;
+    }
+    .missing-name { font-size: 13px; font-weight: 800; color: #7f2029; }
+    .missing-detail { font-size: 11px; color: #8c6064; margin-top: 4px; line-height: 1.55; }
+    .missing-location { display: inline-flex; margin-top: 7px; color: #b62e38; font-size: 10px; font-weight: 800; }
+    .section-card { padding: 16px 18px; }
+    .section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px; }
+    .section-head h3 { margin: 0; font-size: 13px; }
+    .section-head span { font-size: 10px; color: #8a96a8; }
+    .inventory { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .inventory th { text-align: left; color: #8a96a8; font-size: 10px; font-weight: 700; padding: 8px 5px; border-bottom: 1px solid var(--line); }
+    .inventory td { padding: 10px 5px; border-bottom: 1px solid #f0f2f6; }
+    .inventory tr:last-child td { border-bottom: 0; }
+    .inventory td:first-child { font-weight: 700; color: #344158; }
+    .num { font-variant-numeric: tabular-nums; font-weight: 750; }
+    .state { font-size: 10px; font-weight: 800; border-radius: 999px; padding: 4px 7px; white-space: nowrap; }
+    .state.ok { color: #167b59; background: var(--green-soft); }
+    .state.missing { color: #b62e38; background: var(--red-soft); }
+    .state.review { color: #946318; background: var(--amber-soft); }
+    .samples { margin-top: 18px; }
+    .sample-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 15px; }
+    .sample-card {
+      border: 1px solid var(--line); background: #fff; border-radius: 13px; overflow: hidden;
+      text-align: left; padding: 0; color: var(--ink); transition: .18s; position: relative;
+    }
+    .sample-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(20,30,50,.08); }
+    .sample-card.active { border: 2px solid var(--blue); box-shadow: 0 0 0 3px rgba(36,99,235,.09); }
+    .sample-thumb { height: 125px; background: #edf1f6; display: grid; place-items: center; overflow: hidden; }
+    .sample-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: center 30%; }
+    .sample-copy { padding: 10px 11px 12px; }
+    .sample-title { font-size: 11px; font-weight: 800; }
+    .sample-sub { font-size: 10px; color: #8490a2; margin-top: 4px; }
+    .sample-badge { position: absolute; top: 8px; left: 8px; background: rgba(11,20,36,.82); color: #fff; font-size: 9px; padding: 4px 6px; border-radius: 5px; }
+    .bottom-note { color: #8994a5; font-size: 10px; line-height: 1.7; margin: 14px 3px 0; }
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translate(-50%, 20px);
+      background: #172033; color: white; padding: 12px 16px; border-radius: 11px;
+      font-size: 12px; box-shadow: 0 12px 35px #0b142455; opacity: 0; pointer-events: none;
+      transition: .25s; z-index: 20; max-width: min(90vw, 560px); text-align: center;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .upload-empty {
+      display: none; text-align: center; color: #536176; font-size: 12px; line-height: 1.7;
+      padding: 24px;
+    }
+    .upload-empty strong { display: block; color: #172033; font-size: 14px; margin-bottom: 5px; }
+    @media (max-width: 1050px) {
+      .workspace { grid-template-columns: 1fr; }
+      .result-panel { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
+      .result-panel .section-card { grid-column: 1 / -1; }
+      .image-stage { min-height: auto; }
+      .photo-wrap { width: min(100%, 440px); }
+    }
+    @media (max-width: 700px) {
+      .topbar { height: 62px; padding: 0 15px; }
+      .top-right .top-pill:nth-child(2) { display: none; }
+      main { padding: 23px 13px 35px; }
+      .page-head { align-items: flex-start; }
+      .actions { width: 100%; }
+      .actions .btn { flex: 1; }
+      .metrics { grid-template-columns: repeat(2, 1fr); gap: 9px; }
+      .metric { padding: 13px; }
+      .metric-value { font-size: 25px; }
+      .result-panel { display: flex; }
+      .sample-grid { grid-template-columns: repeat(2, 1fr); padding: 10px; gap: 9px; }
+      .sample-thumb { height: 105px; }
+      .image-stage { padding: 10px; }
+      .viewer-footer { flex-direction: column; }
+    }
+  </style>
+<style>
+body{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;line-height:1.55}.topbar{height:78px}.brand-name{font-size:18px}.brand-sub{font-size:11px}.top-right{font-size:13px}main{max-width:1580px;padding-top:30px}.eyebrow{font-size:12px}h1{font-size:32px}.subtitle{font-size:15px}.btn{font-size:14px;padding:12px 18px}.notice{font-size:13px}.metric{padding:20px 22px}.metric-label{font-size:14px}.metric-value{font-size:36px;font-weight:700}.metric-foot{font-size:12px}.workspace{grid-template-columns:minmax(0,1.45fr) minmax(390px,.85fr);gap:22px}.card{border-radius:15px}.card-title{font-size:17px}.card-desc{font-size:12px}.file-meta,.view-tools{font-size:13px}.image-stage{min-height:600px;padding:26px}.photo-wrap{width:min(100%,430px)}.bbox-label{font-size:11px;font-weight:650}.viewer-footer{font-size:12px}.section-head h3{font-size:16px}.section-head span{font-size:12px}.verdict-kicker{font-size:12px}.verdict-count{font-size:36px}.verdict-copy{font-size:14px}.missing-name{font-size:16px}.missing-detail{font-size:13px}.missing-location{font-size:12px}.inventory{font-size:13px}.inventory th{font-size:12px}.inventory td{padding:12px 5px}.state{font-size:11px}.tag{font-size:11px}.sample-grid{gap:16px;padding:20px}.sample-thumb{height:145px}.sample-title{font-size:15px}.sample-sub{font-size:12px}.sample-badge{font-size:11px}.bottom-note{font-size:12px}.photo-wrap img{max-height:none}.verdict-main>.tag{display:none}@media(max-width:1050px){.workspace{grid-template-columns:1fr}.image-stage{min-height:0}.result-panel{grid-template-columns:1fr 1fr}}@media(max-width:700px){.result-panel{display:flex}.brand-name{font-size:15px}.brand-sub{font-size:9px}.top-right{font-size:11px}.metric{padding:15px}.metric-value{font-size:29px}.sample-title{font-size:13px}.sample-sub{font-size:11px}.sample-thumb{height:115px}}
+</style></head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">T</div>
+      <div>
+        <div class="brand-name">机务小工具智能盘点</div>
+        <div class="brand-sub">TOOLBOX VISION · INSPECTION WORKSPACE</div>
+      </div>
+    </div>
+    <div class="top-right">
+      <span class="top-pill"><i class="dot"></i> 盘点工作区</span>
+      <span class="top-pill">清单 V1.0</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-head">
+      <div>
+        <div class="eyebrow">TOOL INVENTORY / VISUAL INSPECTION</div>
+        <h1>工具盒完整性检查</h1>
+        <p class="subtitle">上传现场照片，识别工具类别与数量，对照标准清单，并直观定位缺失项。</p>
+      </div>
+      <div class="actions">
+        <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" hidden />
+        <button class="btn" id="uploadBtn">＋ 上传现场照片</button>
+        <button class="btn btn-primary" id="reanalyzeBtn">重新分析 ↻</button>
+      </div>
+    </section>
+
+    <div class="notice">
+      <div class="notice-icon">ⓘ</div>
+      <div><strong>参考情景采用预设盘点结果，标准清单待人工核定。</strong>
+        支持上传现场照片预览。缺失情景含合成素材；真实照片分析服务尚待接入。
+      </div>
+    </div>
+
+    <section class="metrics">
+      <div class="metric">
+        <div class="metric-top"><span class="metric-label">标准工具数量</span><span class="metric-icon">▤</span></div>
+        <div class="metric-value" id="expectedMetric">52</div>
+        <div class="metric-foot">含约 40 枚批头的暂定基线</div>
+      </div>
+      <div class="metric">
+        <div class="metric-top"><span class="metric-label">本次识别数量</span><span class="metric-icon">⌕</span></div>
+        <div class="metric-value" id="observedMetric">51</div>
+        <div class="metric-foot">当前选中样例的固定演示值</div>
+      </div>
+      <div class="metric">
+        <div class="metric-top"><span class="metric-label">缺失数量</span><span class="metric-icon" style="color:#d93b45;background:#fff0f0">!</span></div>
+        <div class="metric-value" id="missingMetric" style="color:#d93b45">1</div>
+        <div class="metric-foot">按暂定标准清单计算</div>
+      </div>
+      <div class="metric">
+        <div class="metric-top"><span class="metric-label">待人工复核</span><span class="metric-icon" style="color:#b7791f;background:#fff7e7">◷</span></div>
+        <div class="metric-value" id="reviewMetric">1</div>
+        <div class="metric-foot">批头数量为低置信度估算</div>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">图像检测结果</div>
+            <div class="card-desc">绿色：识别到的工具 · 红色：缺失位置 · 黄色：需人工复核</div>
+          </div>
+          <span class="tag blue" id="modeTag">参考情景</span>
+        </div>
+        <div class="viewer-toolbar">
+          <div class="file-meta">
+            <span>▧</span>
+            <span class="file-name" id="fileName">missing-one-socket.png</span>
+            <span id="imageDimensions">1279 × 1706</span>
+          </div>
+          <div class="view-tools">
+            <span>显示检测标注</span>
+            <button class="switch on" id="overlaySwitch" aria-label="显示检测标注" aria-pressed="true"></button>
+          </div>
+        </div>
+        <div class="image-stage">
+          <div class="photo-wrap" id="photoWrap">
+            <img id="mainImage" src="/samples/missing_one_socket.jpg" alt="工具盒样例图片" />
+            <div class="overlay" id="overlay"></div>
+            <div class="upload-empty" id="uploadEmpty">
+              <strong>图片已上传，等待真实识别</strong>
+              当前原型未连接 Qwen API。此处不会显示虚构的检测框或盘点结果。
+            </div>
+          </div>
+        </div>
+        <div class="viewer-footer">
+          <div class="legend">
+            <span class="legend-item"><i class="legend-dot"></i> 已识别工具</span>
+            <span class="legend-item"><i class="legend-dot red"></i> 缺失 / 空槽位</span>
+            <span class="legend-item"><i class="legend-dot amber"></i> 需人工复核</span>
+          </div>
+          <span id="sourceNote">来源：合成缺失样例 · 固定 Mock 结果</span>
+        </div>
+      </div>
+
+      <aside class="result-panel">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">盘点结论</div>
+              <div class="card-desc">基于当前样例与暂定标准清单</div>
+            </div>
+            <span class="tag red" id="verdictTag">发现缺失</span>
+          </div>
+          <div class="section-card">
+            <div class="verdict" id="verdictBox">
+              <div class="verdict-kicker" id="verdictKicker">INCOMPLETE · 需补齐</div>
+              <div class="verdict-main">
+                <div class="verdict-count" id="verdictCount">缺少 1 件</div>
+                <span class="tag red">异常</span>
+              </div>
+              <div class="verdict-copy" id="verdictCopy">发现 1 项缺失，请根据图中红色位置检查工具盒。</div>
+            </div>
+          </div>
+          <div class="section-card" style="padding-top:0">
+            <div class="section-head"><h3>缺失项定位</h3><span id="missingCountLabel">1 项待补齐</span></div>
+            <div class="missing-list" id="missingList"></div>
+          </div>
+        </div>
+
+        <div class="card section-card">
+          <div class="section-head">
+            <h3>工具清单核对</h3>
+            <span>标准数量为暂定值</span>
+          </div>
+          <table class="inventory">
+            <thead><tr><th>工具类别</th><th>标准</th><th>识别</th><th>差异</th><th>状态</th></tr></thead>
+            <tbody id="inventoryBody"></tbody>
+          </table>
+        </div>
+      </aside>
+    </section>
+
+    <section class="card samples">
+      <div class="card-head">
+        <div>
+          <div class="card-title">参考情景</div>
+          <div class="card-desc">点击切换不同场景，查看缺失结论和图像标注如何变化。</div>
+        </div>
+        <span class="tag">4 个盘点情景</span>
+      </div>
+      <div class="sample-grid" id="sampleGrid">
+        <button class="sample-card" data-sample="complete">
+          <span class="sample-badge">原始照片</span>
+          <div class="sample-thumb"><img src="/samples/complete_reference.jpg" alt="" /></div>
+          <div class="sample-copy"><div class="sample-title">完整工具盒</div><div class="sample-sub">按暂定清单：未发现缺失</div></div>
+        </button>
+        <button class="sample-card active" data-sample="socket">
+          <span class="sample-badge">合成图片</span>
+          <div class="sample-thumb"><img src="/samples/missing_one_socket.jpg" alt="" /></div>
+          <div class="sample-copy"><div class="sample-title">缺少 1 个套筒</div><div class="sample-sub">套筒 7 / 8 · 缺少 1 个</div></div>
+        </button>
+        <button class="sample-card" data-sample="bits">
+          <span class="sample-badge">合成图片</span>
+          <div class="sample-thumb"><img src="/samples/missing_three_bits.jpg" alt="" /></div>
+          <div class="sample-copy"><div class="sample-title">缺少 3 枚批头</div><div class="sample-sub">批头约 37 / 40 · 缺少 3 枚</div></div>
+        </button>
+        <button class="sample-card" data-sample="extension">
+          <span class="sample-badge">合成图片</span>
+          <div class="sample-thumb"><img src="/samples/missing_long_extension.jpg" alt="" /></div>
+          <div class="sample-copy"><div class="sample-title">缺少 1 根长延长杆</div><div class="sample-sub">长延长杆 0 / 1 · 缺少 1 根</div></div>
+        </button>
+      </div>
+    </section>
+
+    <p class="bottom-note">
+      说明：本页用于确认信息层级、颜色、交互与结果呈现，不代表真实模型识别效果。批头标准数量约 40 枚，属于单张参考照片上的初步估算；正式盘点前需要人工确认。缺失物品没有实际检测框时，只能在模型可靠识别到空槽位的情况下标出位置，否则应显示“位置未可靠定位，请人工复核”。
+    </p>
+  </main>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const inventoryBase = [
+      { id: "large", name: "大号螺丝刀手柄组件", expected: 1, unit: "件" },
+      { id: "small", name: "小号螺丝刀手柄组件", expected: 1, unit: "件" },
+      { id: "socket", name: "套筒", expected: 8, unit: "个" },
+      { id: "bits", name: "批头（暂定）", expected: 40, unit: "枚" },
+      { id: "short", name: "短延长杆 / 转接杆", expected: 1, unit: "根" },
+      { id: "long", name: "长延长杆", expected: 1, unit: "根" }
+    ];
+    const scenarios = {
+      complete: {
+        image: "/samples/complete_reference.jpg", file: "complete-reference.jpg", dims: "1279 × 1706",
+        observed: { large:1, small:1, socket:8, bits:40, short:1, long:1 },
+        missing: [], review: 1, status: "complete",
+        source: "来源：用户原始参考照片 · 固定 Mock 结果",
+        boxes: [
+          ["large",14,6,26,53,"大号手柄 ×1","green"],
+          ["small",40,8,16,51,"小号手柄 ×1","green"],
+          ["bits",50,8,21,62,"批头区域 · 约40枚","amber"],
+          ["socket",73,7,16,61,"套筒区域 · 8个","green"],
+          ["short",40,76,43,8,"短延长杆 ×1","green"],
+          ["long",40,85,43,8,"长延长杆 ×1","green"]
+        ]
+      },
+      socket: {
+        image: "/samples/missing_one_socket.jpg", file: "missing-one-socket.png", dims: "1279 × 1706",
+        observed: { large:1, small:1, socket:7, bits:40, short:1, long:1 },
+        missing: [{id:"socket", name:"套筒", expected:8, observed:7, count:1, unit:"个", location:"右侧套筒收纳位 · 第 3 个空槽"}],
+        review: 1, status: "missing",
+        source: "来源：合成缺失样例 · 固定 Mock 结果",
+        boxes: [
+          ["large",14,6,26,53,"大号手柄 ×1","green"],
+          ["small",40,8,16,51,"小号手柄 ×1","green"],
+          ["bits",50,8,21,62,"批头区域 · 约40枚","amber"],
+          ["socket-1",73,7,16,7,"套筒 1","green"],
+          ["socket-2",73,16,16,7,"套筒 2","green"],
+          ["socket-3",73,25,16,7,"缺失槽位","red"],
+          ["socket-4",73,34,16,7,"套筒 4","green"],
+          ["socket-5",73,43,16,7,"套筒 5","green"],
+          ["socket-6",73,52,16,7,"套筒 6","green"],
+          ["socket-7",73,61,16,7,"套筒 7","green"],
+          ["short",40,76,43,8,"短延长杆 ×1","green"],
+          ["long",40,85,43,8,"长延长杆 ×1","green"]
+        ]
+      },
+      bits: {
+        image: "/samples/missing_three_bits.jpg", file: "missing-three-bits.jpg", dims: "1279 × 1706",
+        observed: { large:1, small:1, socket:8, bits:37, short:1, long:1 },
+        missing: [{id:"bits", name:"批头（暂定）", expected:40, observed:37, count:3, unit:"枚", location:"中上部批头收纳区 · 具体空槽需复核"}],
+        review: 1, status: "missing",
+        source: "来源：合成缺失样例 · 固定 Mock 结果",
+        boxes: [
+          ["large",14,6,26,53,"大号手柄 ×1","green"],
+          ["small",40,8,16,51,"小号手柄 ×1","green"],
+          ["bits",48,8,24,62,"批头区域 · 约37/40","amber"],
+          ["bit-hole-1",46,16,3,4,"","red"],
+          ["bit-hole-2",53,16,3,4,"","red"],
+          ["bit-hole-3",59,16,3,4,"","red"],
+          ["socket",73,7,16,61,"套筒区域 · 8个","green"],
+          ["short",40,76,43,8,"短延长杆 ×1","green"],
+          ["long",40,85,43,8,"长延长杆 ×1","green"]
+        ]
+      },
+      extension: {
+        image: "/samples/missing_long_extension.jpg", file: "missing-long-extension.jpg", dims: "1279 × 1706",
+        observed: { large:1, small:1, socket:8, bits:40, short:1, long:0 },
+        missing: [{id:"long", name:"长延长杆", expected:1, observed:0, count:1, unit:"根", location:"工具盒底部横向长槽 · 空槽位"}],
+        review: 1, status: "missing",
+        source: "来源：合成缺失样例 · 固定 Mock 结果",
+        boxes: [
+          ["large",14,6,26,53,"大号手柄 ×1","green"],
+          ["small",40,8,16,51,"小号手柄 ×1","green"],
+          ["bits",50,8,21,62,"批头区域 · 约40枚","amber"],
+          ["socket",73,7,16,61,"套筒区域 · 8个","green"],
+          ["short",40,76,43,8,"短延长杆 ×1","green"],
+          ["long",40,85,43,8,"长延长杆缺失","red"]
+        ]
+      }
+    };
+
+    let activeScenario = "socket";
+    let customFileUrl = null;
+    let isCustomUpload = false;
+    let overlayOn = true;
+    let toastTimer = null;
+
+    const $ = (id) => document.getElementById(id);
+    const image = $("mainImage");
+    const overlay = $("overlay");
+
+    function toast(message) {
+      const el = $("toast");
+      el.textContent = message;
+      el.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove("show"), 3200);
+    }
+
+    function drawBoxes(boxes) {
+      overlay.innerHTML = "";
+      if (!overlayOn || isCustomUpload) return;
+      boxes.forEach(([id,x,y,w,h,label,kind]) => {
+        const box = document.createElement("div");
+        box.className = "bbox" + (kind === "red" ? " red" : kind === "amber" ? " amber" : "");
+        box.style.left = x + "%";
+        box.style.top = y + "%";
+        box.style.width = w + "%";
+        box.style.height = h + "%";
+        if (label) {
+          const tag = document.createElement("span");
+          tag.className = "bbox-label";
+          tag.textContent = label;
+          box.appendChild(tag);
+        }
+        overlay.appendChild(box);
+      });
+    }
+
+    function renderTable(s) {
+      const body = $("inventoryBody");
+      body.innerHTML = "";
+      let expectedTotal = 0, observedTotal = 0;
+      inventoryBase.forEach(item => {
+        const observed = s.observed[item.id] ?? 0;
+        const diff = Math.max(0, item.expected - observed);
+        expectedTotal += item.expected;
+        observedTotal += observed;
+        const isReview = item.id === "bits";
+        const tr = document.createElement("tr");
+        const state = diff > 0
+          ? `<span class="state missing">缺 ${diff}${item.unit}</span>`
+          : isReview ? `<span class="state review">需复核</span>` : `<span class="state ok">正常</span>`;
+        tr.innerHTML = `
+          <td>${item.name}</td>
+          <td class="num">${item.id === "bits" ? "约 " : ""}${item.expected}</td>
+          <td class="num">${observed}</td>
+          <td class="num" style="color:${diff ? "#c4313b" : "#8490a2"}">${diff ? "-" + diff : "—"}</td>
+          <td>${state}</td>`;
+        body.appendChild(tr);
+      });
+      $("expectedMetric").textContent = expectedTotal;
+      $("observedMetric").textContent = observedTotal;
+      const missingTotal = Object.entries(s.observed).reduce((sum,[id,count]) => {
+        const item = inventoryBase.find(x => x.id === id);
+        return sum + Math.max(0, (item?.expected ?? 0) - count);
+      },0);
+      $("missingMetric").textContent = missingTotal;
+      $("reviewMetric").textContent = s.review;
+    }
+
+    function renderMissing(s) {
+      const list = $("missingList");
+      list.innerHTML = "";
+      if (!s.missing.length) {
+        list.innerHTML = `<div class="missing-item" style="border-color:#c9efdd;background:#f7fdf9">
+          <div class="missing-symbol" style="background:#ddf6e9;color:#147b59">✓</div>
+          <div><div class="missing-name" style="color:#176b4e">暂未发现缺失</div>
+          <div class="missing-detail">当前样例与暂定标准清单一致；批头数量仍建议人工确认。</div></div></div>`;
+        $("missingCountLabel").textContent = "0 项缺失";
+        return;
+      }
+      $("missingCountLabel").textContent = s.missing.length + " 项待补齐";
+      s.missing.forEach(item => {
+        const el = document.createElement("div");
+        el.className = "missing-item";
+        el.innerHTML = `<div class="missing-symbol">!</div>
+          <div><div class="missing-name">${item.name} · 缺少 ${item.count}${item.unit}</div>
+          <div class="missing-detail">标准 ${item.expected}${item.unit}，识别到 ${item.observed}${item.unit}。请检查对应收纳位置。</div>
+          <span class="missing-location">⌖ ${item.location}</span></div>`;
+        list.appendChild(el);
+      });
+    }
+
+    function renderScenario(id) {
+      const s = scenarios[id];
+      if (!s) return;
+      activeScenario = id;
+      isCustomUpload = false;
+      $("uploadEmpty").style.display = "none";
+      image.style.display = "block";
+      image.src = s.image;
+      $("fileName").textContent = s.file;
+      $("imageDimensions").textContent = s.dims;
+      $("sourceNote").textContent = s.source;
+      $("modeTag").textContent = "参考情景";
+      $("modeTag").className = "tag blue";
+      $("reanalyzeBtn").textContent = "重新分析 ↻";
+
+      const verdictBox = $("verdictBox");
+      const verdictTag = $("verdictTag");
+      verdictBox.className = "verdict";
+      if (s.status === "complete") {
+        verdictBox.classList.add("complete");
+        verdictTag.className = "tag green";
+        verdictTag.textContent = "清单齐全";
+        $("verdictKicker").textContent = "COMPLETE · 暂未发现缺失";
+        $("verdictCount").textContent = "0 项缺失";
+        $("verdictCopy").textContent = "当前样例与暂定清单一致。批头数量仍为估算值，正式盘点需人工确认。";
+      } else {
+        verdictTag.className = "tag red";
+        verdictTag.textContent = "发现缺失";
+        const total = s.missing.reduce((n,x) => n + x.count, 0);
+        $("verdictKicker").textContent = "INCOMPLETE · 需补齐";
+        $("verdictCount").textContent = `缺少 ${total} 件`;
+        $("verdictCopy").textContent = `发现 ${s.missing.length} 项缺失，红色标记用于提示样例中的缺失位置。`;
+      }
+      renderTable(s);
+      renderMissing(s);
+      drawBoxes(s.boxes);
+      document.querySelectorAll(".sample-card").forEach(btn => btn.classList.toggle("active", btn.dataset.sample === id));
+    }
+
+    $("sampleGrid").addEventListener("click", (event) => {
+      const btn = event.target.closest(".sample-card");
+      if (!btn) return;
+      if (customFileUrl) { URL.revokeObjectURL(customFileUrl); customFileUrl = null; }
+      renderScenario(btn.dataset.sample);
+    });
+
+    $("overlaySwitch").addEventListener("click", () => {
+      overlayOn = !overlayOn;
+      $("overlaySwitch").classList.toggle("on", overlayOn);
+      $("overlaySwitch").setAttribute("aria-pressed", String(overlayOn));
+      drawBoxes(scenarios[activeScenario]?.boxes ?? []);
+    });
+
+    $("uploadBtn").addEventListener("click", () => $("fileInput").click());
+    $("fileInput").addEventListener("change", (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (!["image/jpeg","image/png","image/webp"].includes(file.type)) {
+        toast("仅支持 JPG、PNG、WEBP 图片。");
+        event.target.value = "";
+        return;
+      }
+      if (file.size > 7 * 1024 * 1024) {
+        toast("样例页面限制图片不超过 7 MB。");
+        event.target.value = "";
+        return;
+      }
+      if (customFileUrl) URL.revokeObjectURL(customFileUrl);
+      customFileUrl = URL.createObjectURL(file);
+      isCustomUpload = true;
+      image.src = customFileUrl;
+      image.style.display = "block";
+      $("uploadEmpty").style.display = "block";
+      overlay.innerHTML = "";
+      $("fileName").textContent = file.name;
+      $("imageDimensions").textContent = "自定义上传";
+      $("sourceNote").textContent = "来源：用户上传 · 尚未调用模型";
+      $("modeTag").textContent = "待真实 API 分析";
+      $("modeTag").className = "tag";
+      $("verdictBox").className = "verdict review";
+      $("verdictTag").className = "tag";
+      $("verdictTag").textContent = "等待识别";
+      $("verdictKicker").textContent = "WAITING · 未产生识别结论";
+      $("verdictCount").textContent = "待分析";
+      $("verdictCopy").textContent = "图片已上传并完成预览。当前原型未连接 Qwen-VL，因此不会给出虚构的缺失判断。";
+      $("missingList").innerHTML = `<div class="missing-item" style="border-color:#f1dfb8;background:#fffaf0">
+        <div class="missing-symbol" style="background:#fff0cf;color:#9b691b">…</div>
+        <div><div class="missing-name" style="color:#805915">尚未执行真实识别</div>
+        <div class="missing-detail">接入 Qwen API 后，点击分析即可返回工具框、数量和缺失结论。</div></div></div>`;
+      $("missingCountLabel").textContent = "待分析";
+      $("inventoryBody").innerHTML = `<tr><td colspan="5" style="color:#8994a5;padding:18px 5px">自定义图片尚未识别，不显示模拟数量。</td></tr>`;
+      $("expectedMetric").textContent = "52";
+      $("observedMetric").textContent = "—";
+      $("missingMetric").textContent = "—";
+      $("reviewMetric").textContent = "—";
+      document.querySelectorAll(".sample-card").forEach(btn => btn.classList.remove("active"));
+      toast("图片预览已更新。此原型未连接 Qwen API，不会生成模拟识别结果。");
+    });
+
+    $("reanalyzeBtn").addEventListener("click", () => {
+      if (isCustomUpload) {
+        toast("真实 Qwen API 尚未接入：当前只完成图片预览，不会伪造识别结果。");
+        return;
+      }
+      renderScenario(activeScenario);
+      toast("已重新载入固定 Mock 结果；这不是一次真实模型调用。");
+    });
+
+    // Initial sample: a missing socket, so the primary UI shows the key missing-item experience.
+    renderScenario("socket");
+  </script>
+</body>
+</html>
+

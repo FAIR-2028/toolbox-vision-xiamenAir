@@ -1,0 +1,15 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+const base=process.env.TEST_BASE_URL||'http://127.0.0.1:3002';
+const scenarios=JSON.parse(await readFile(new URL('../config/mock_scenarios.json',import.meta.url)));
+async function analyze(file,id){const form=new FormData();if(file)form.append('image',file,file.type==='image/png'?'photo.png':'photo.jpg');if(id)form.append('sampleId',id);return fetch(base+'/api/analyze',{method:'POST',body:form})}
+test('health, inventory and four static sample images',async()=>{const h=await fetch(base+'/api/health').then(r=>r.json());assert.equal(h.ok,true);assert.equal(h.mode,'mock');const inv=await fetch(base+'/api/inventory').then(r=>r.json());assert.equal(inv.items.length,6);for(const s of scenarios.scenarios){assert.equal((await fetch(base+'/samples/'+s.file)).status,200)}});
+for(const s of scenarios.scenarios)test('inventory result: '+s.sampleId,async()=>{const bytes=await readFile(new URL('../public/samples/'+s.file,import.meta.url));const r=await analyze(new Blob([bytes],{type:s.file.endsWith('.png')?'image/png':'image/jpeg'}),s.sampleId);assert.equal(r.status,200);const d=await r.json();assert.equal(d.status,s.status);assert.equal(d.summary.observedTotal,Object.values(s.observedCounts).reduce((a,b)=>a+b,0));for(const item of d.inventory){assert.equal(item.observedCount,s.observedCounts[item.classId]);assert.equal(item.missingCount,Math.max(0,item.expectedCount-item.observedCount))}assert.equal(d.missingSlots.length,s.missing.length);assert.ok(d.warnings.length);});
+test('missing image rejected',async()=>assert.equal((await analyze(null,'complete')).status,400));
+test('forged JPEG rejected',async()=>assert.equal((await analyze(new Blob(['not a photo'],{type:'image/jpeg'}),'complete')).status,400));
+test('oversized upload rejected',async()=>assert.equal((await analyze(new Blob([new Uint8Array(8*1024*1024)],{type:'image/jpeg'}),'complete')).status,413));
+test('arbitrary photo cannot inherit a sample result without sampleId',async()=>{const bytes=await readFile(new URL('../public/samples/complete_reference.jpg',import.meta.url));const r=await analyze(new Blob([bytes],{type:'image/jpeg'}));assert.equal(r.status,400);assert.equal((await r.json()).error.code,'SAMPLE_REQUIRED')});
+
+
+test('valid image with mismatched filename extension rejected',async()=>{const sharp=(await import('sharp')).default;const png=await sharp({create:{width:2,height:2,channels:3,background:'#fff'}}).png().toBuffer();const form=new FormData();form.append('image',new Blob([png],{type:'image/png'}),'forged.jpg');form.append('sampleId','complete');const response=await fetch(base+'/api/analyze',{method:'POST',body:form});assert.equal(response.status,400);assert.equal((await response.json()).error.code,'INVALID_IMAGE')});

@@ -1,0 +1,100 @@
+{
+  "scenarios": [
+    {
+      "sampleId": "complete",
+      "file": "complete_reference.jpg",
+      "label": "完整工具盒",
+      "status": "complete",
+      "observedCounts": {
+        "large_driver_handle": 1,
+        "small_driver_handle": 1,
+        "socket": 9,
+        "bit_head": 40,
+        "short_extension_adapter": 1,
+        "long_extension_bar": 1
+      },
+      "missing": []
+    },
+    {
+      "sampleId": "missing_socket",
+      "file": "missing_top_socket.png",
+      "label": "缺少 1 个套筒",
+      "status": "missing",
+      "observedCounts": {
+        "large_driver_handle": 1,
+        "small_driver_handle": 1,
+        "socket": 8,
+        "bit_head": 40,
+        "short_extension_adapter": 1,
+        "long_extension_bar": 1
+      },
+      "missing": [
+        {
+          "classId": "socket",
+          "label": "套筒",
+          "missingCount": 1,
+          "bbox": [
+            730,
+            100,
+            840,
+            185
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "missing_large_handle",
+      "file": "missing_large_handle.png",
+      "label": "缺少大号手柄",
+      "status": "missing",
+      "observedCounts": {
+        "large_driver_handle": 0,
+        "small_driver_handle": 1,
+        "socket": 9,
+        "bit_head": 40,
+        "short_extension_adapter": 1,
+        "long_extension_bar": 1
+      },
+      "missing": [
+        {
+          "classId": "large_driver_handle",
+          "label": "大号螺丝刀手柄组件",
+          "missingCount": 1,
+          "bbox": [
+            140,
+            85,
+            405,
+            885
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "missing_small_handle",
+      "file": "missing_small_handle.png",
+      "label": "缺少小号手柄",
+      "status": "missing",
+      "observedCounts": {
+        "large_driver_handle": 1,
+        "small_driver_handle": 0,
+        "socket": 9,
+        "bit_head": 40,
+        "short_extension_adapter": 1,
+        "long_extension_bar": 1
+      },
+      "missing": [
+        {
+          "classId": "small_driver_handle",
+          "label": "小号螺丝刀手柄组件",
+          "missingCount": 1,
+          "bbox": [
+            420,
+            95,
+            550,
+            650
+          ]
+        }
+      ]
+    }
+  ]
+}

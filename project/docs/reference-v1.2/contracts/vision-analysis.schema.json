@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/toolbox-vision/vision-analysis.schema.json",
+  "title": "Toolbox Vision Analysis",
+  "type": "object",
+  "required": [
+    "requestId",
+    "provider",
+    "sourceLabel",
+    "overallStatus",
+    "coordinateSystem",
+    "imageWidth",
+    "imageHeight",
+    "expectedTotal",
+    "observedTotal",
+    "missingTotal",
+    "reviewCount",
+    "inventory",
+    "detections",
+    "missingItems",
+    "uncertainRegions",
+    "warnings"
+  ],
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "provider": {
+      "enum": [
+        "mock",
+        "qwen",
+        "algorithm"
+      ]
+    },
+    "sourceLabel": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "algorithmVersion": {
+      "type": "string"
+    },
+    "overallStatus": {
+      "enum": [
+        "complete",
+        "missing",
+        "review"
+      ]
+    },
+    "coordinateSystem": {
+      "const": "normalized_0_1000"
+    },
+    "imageWidth": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "imageHeight": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "expectedTotal": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "observedTotal": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "missingTotal": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "reviewCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "inventory": {
+      "type": "array"
+    },
+    "detections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "classId",
+          "label",
+          "bbox",
+          "count"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "classId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "bbox": {
+            "$ref": "#/$defs/bbox"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    },
+    "missingItems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "classId",
+          "label",
+          "expectedCount",
+          "observedCount",
+          "missingCount",
+          "unit",
+          "locationReliable",
+          "confidenceLevel"
+        ],
+        "properties": {
+          "classId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "expectedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "observedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "missingCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unit": {
+            "type": "string"
+          },
+          "locationText": {
+            "type": "string"
+          },
+          "slotBbox": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/bbox"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "locationReliable": {
+            "type": "boolean"
+          },
+          "confidenceLevel": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          }
+        }
+      }
+    },
+    "uncertainRegions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/bbox"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "$defs": {
+    "bbox": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        }
+      ],
+      "minItems": 4,
+      "maxItems": 4
+    }
+  }
+}

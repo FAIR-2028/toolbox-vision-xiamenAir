@@ -1,0 +1,122 @@
+openapi: 3.1.0
+info:
+  title: Toolbox Detection Algorithm Adapter Contract
+  version: 1.0.0
+  description: >
+    Contract for a future local or remote toolbox detection service.
+    The algorithm may be YOLO, RT-DETR, ONNX, TensorRT or another implementation.
+servers:
+  - url: http://localhost:8001
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    const: ok
+                  version:
+                    type: string
+  /predict:
+    post:
+      summary: Detect toolbox items and empty slots
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, inventory, requestId, coordinateSystem]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                inventory:
+                  type: string
+                  description: JSON serialized ToolInventory
+                requestId:
+                  type: string
+                coordinateSystem:
+                  type: string
+                  enum: [normalized_0_1000]
+      responses:
+        "200":
+          description: Normalized detections
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlgorithmPrediction"
+        "400":
+          description: Invalid image or request
+        "422":
+          description: Detection output cannot be normalized
+        "500":
+          description: Algorithm runtime error
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    AlgorithmPrediction:
+      type: object
+      required: [requestId, imageWidth, imageHeight, coordinateSystem, detections, emptySlots, uncertainRegions, notes]
+      properties:
+        requestId:
+          type: string
+        imageWidth:
+          type: integer
+          minimum: 1
+        imageHeight:
+          type: integer
+          minimum: 1
+        coordinateSystem:
+          const: normalized_0_1000
+        detections:
+          type: array
+          items:
+            type: object
+            required: [classId, label, bbox, count]
+            properties:
+              classId: {type: string}
+              label: {type: string}
+              bbox:
+                type: array
+                items: {type: number, minimum: 0, maximum: 1000}
+                minItems: 4
+                maxItems: 4
+              count: {type: integer, minimum: 1}
+              confidence: {type: number, minimum: 0, maximum: 1}
+        emptySlots:
+          type: array
+          items:
+            type: object
+            required: [classId, label, bbox, confidence]
+            properties:
+              classId: {type: string}
+              label: {type: string}
+              bbox:
+                type: array
+                items: {type: number, minimum: 0, maximum: 1000}
+                minItems: 4
+                maxItems: 4
+              confidence: {type: number, minimum: 0, maximum: 1}
+        uncertainRegions:
+          type: array
+          items:
+            type: array
+            items: {type: number, minimum: 0, maximum: 1000}
+            minItems: 4
+            maxItems: 4
+        notes:
+          type: array
+          items: {type: string}
