@@ -386,7 +386,7 @@ main{padding-top:20px;padding-bottom:24px}
 <div class="overlay" id="overlay"></div>
 <div class="upload-empty" id="uploadEmpty">
 <strong>图片已上传，等待真实识别</strong>
-              当前原型未连接 Qwen API。此处不会显示虚构的检测框或盘点结果。
+              上传后由服务端调用已配置视觉模型，识别结果与检测框同步显示。
             </div>
 </div>
 </div>
@@ -478,7 +478,6 @@ main{padding-top:20px;padding-bottom:24px}
 
     function drawBoxes(boxes) {
       overlay.innerHTML = "";
-      if (isCustomUpload) return;
       boxes.forEach(([id,x,y,w,h,label,kind]) => {
         if (kind === "red" ? !overlayOn : !recognizedOn) return;
         const box = document.createElement("div");
@@ -553,68 +552,115 @@ main{padding-top:20px;padding-bottom:24px}
     }
 
     let scenarioRequest=0;
-    async function renderScenario(id) {
-      const request=++scenarioRequest;
-      const chosen=scenarios[id];
-      if(!chosen)return;
-      const ids={complete:'complete',socket:'missing_socket',bits:'missing_large_handle',extension:'missing_small_handle'};
-      const classes={large:'large_driver_handle',small:'small_driver_handle',socket:'socket',bits:'bit_head',short:'short_extension_adapter',long:'long_extension_bar'};
-      $('reanalyzeBtn').disabled=true;
-      try{
-        const picture=await fetch(chosen.image);
-        if(!picture.ok)throw new Error('参考照片加载失败');
-        const form=new FormData();
-        const blob=await picture.blob();
-        form.append('image',blob,chosen.image.split('/').pop());
-        form.append('sampleId',ids[id]);
-        form.append('mode','mock');
-        const response=await fetch('/api/analyze',{method:'POST',body:form});
-        const payload=await response.json();
-        if(!response.ok)throw new Error(payload.error?.message||'盘点请求失败');
-        if(request!==scenarioRequest)return;
-        for(const [key,classId] of Object.entries(classes)){
-          const row=payload.inventory.find(x=>x.classId===classId);
-          if(row)chosen.observed[key]=row.observedCount;
-        }
-        chosen.dims=payload.image.width+' × '+payload.image.height;
-      }catch(error){if(request===scenarioRequest)toast(error.message||'请求失败，请重试');return}
-      finally{if(request===scenarioRequest)$('reanalyzeBtn').disabled=false}
-      const s = scenarios[id];
-      if (!s) return;
-      activeScenario = id;
-      isCustomUpload = false;
-      $("uploadEmpty").style.display = "none";
-      image.style.display = "block";
-      image.src = s.image;
-      $("fileName").textContent = s.file;
-      $("imageDimensions").textContent = s.dims;
-      $("sourceNote").textContent = s.source;
-      $("modeTag").textContent = "历史记录";
-      $("modeTag").className = "tag blue";
-      $("reanalyzeBtn").textContent = "运行盘点 ↗";
-
-      const verdictBox = $("verdictBox");
-      const verdictTag = $("verdictTag");
-      verdictBox.className = "verdict";
-      if (s.status === "complete") {
-        verdictBox.classList.add("complete");
-        verdictTag.className = "tag green";
-        verdictTag.textContent = "清单齐全";
-        $("verdictKicker").textContent = "COMPLETE · 暂未发现缺失";
-        $("verdictCount").textContent = "0 项缺失";
-        $("verdictCopy").textContent = "当前记录与暂定清单一致。批头数量仍为估算值，正式盘点需人工确认。";
-      } else {
-        verdictTag.className = "tag red";
-        verdictTag.textContent = "发现缺失";
-        const total = s.missing.reduce((n,x) => n + x.count, 0);
-        $("verdictKicker").textContent = "INCOMPLETE · 需补齐";
-        $("verdictCount").textContent = `缺少 ${total} 件`;
-        $("verdictCopy").textContent = `发现 ${s.missing.length} 项缺失，红色标记对应本条记录中的缺失位置。`;
+    let analysisController=null;
+    let lastApiPayload=null;
+    let lastAnalyzedFile=null;
+    const ids={complete:'complete',socket:'missing_socket',bits:'missing_large_handle',extension:'missing_small_handle'};
+    const sampleImages={complete:'/samples/complete_reference.jpg',socket:'/samples/missing_top_socket.png',bits:'/samples/missing_large_handle.png',extension:'/samples/missing_small_handle.png'};
+    function previewScenario(id){const sample=scenarios[id];if(!sample)return;scenarioRequest++;analysisController?.abort();analysisController=null;activeScenario=id;isCustomUpload=false;lastApiPayload=null;lastAnalyzedFile=null;image.src=sampleImages[id];image.style.display='block';$('uploadEmpty').style.display='none';$('fileName').textContent=sample.file;$('imageDimensions').textContent=sample.dims;$('sourceNote').textContent='来源：内置测试图片 · 点击运行盘点调用真实视觉模型';$('modeTag').textContent='待运行 API';$('modeTag').className='tag blue';$('reanalyzeBtn').textContent='运行盘点 ↗';$('reanalyzeBtn').disabled=false;document.querySelectorAll('.sample-card').forEach(button=>button.classList.toggle('active',button.dataset.sample===id));$('expectedMetric').textContent=53;$('observedMetric').textContent='—';$('missingMetric').textContent='—';$('reviewMetric').textContent='—';$('verdictBox').className='verdict review';$('verdictTag').className='tag blue';$('verdictTag').textContent='待运行';$('verdictKicker').textContent='READY · 尚未分析图片';$('verdictCount').textContent='待分析';$('verdictCopy').textContent='点击“运行盘点”调用真实视觉模型。模型响应前不显示模拟识别结果。';$('missingCountLabel').textContent='待分析';$('missingList').innerHTML='<div class="missing-item" style="border-color:#f1dfb8;background:#fffaf0"><div class="missing-symbol" style="background:#fff0cf;color:#9b691b">…</div><div><div class="missing-name" style="color:#805915">尚未运行识别</div><div class="missing-detail">此处会显示模型确认的缺失项和位置。</div></div></div>';$('inventoryBody').innerHTML='<tr><td colspan="5" style="color:#8994a5;padding:18px 5px">点击“运行盘点”后显示模型识别清单。</td></tr>';overlay.innerHTML=''}
+    function renderApiPayload(payload, fileName, source, file) {
+      lastApiPayload=payload;
+      lastAnalyzedFile=file;
+      isCustomUpload=source.includes('用户上传');
+      activeScenario=null;
+      image.style.display='block';
+      if(payload.previewDataUrl)image.src=payload.previewDataUrl;
+      $("uploadEmpty").style.display='none';
+      $("fileName").textContent=fileName;
+      $("imageDimensions").textContent=payload.image.width+' × '+payload.image.height;
+      $("sourceNote").textContent=source;
+      $("modeTag").textContent=payload.mode==='yolo'?'本机 YOLO · 空槽候选':'真实 API · '+(payload.model||'视觉模型');
+      $("modeTag").className=payload.mode==='yolo'?'tag blue':'tag green';
+      $("reanalyzeBtn").textContent='重新识别 ↗';
+      if(payload.mode==='yolo'||payload.mode==='real_slots'){
+        const candidates=payload.missingSlots||[];
+        const realSlots=payload.mode==='real_slots';
+        $("verdictBox").className='verdict '+(candidates.length?'':'review');
+        $("verdictTag").className='tag';
+        $("verdictTag").className='tag '+(candidates.length?'red':'');
+        $("verdictTag").textContent=realSlots&&candidates.length?'发现缺失':'人工确认';
+        $("verdictKicker").textContent=realSlots?'实拍参考图 · 槽位检测':'本机 YOLO · 空槽候选';
+        $("verdictCount").textContent=realSlots&&candidates.length?`缺少 ${candidates.length} 个位置`:`${candidates.length} 个候选框`;
+        $("verdictCopy").textContent=realSlots?`已按同型号实拍参考图完成配准并定位稳定槽位。${payload.registrationInliers<800?'当前配准特征较少，请确认拍摄角度。':'配准质量良好。'} 批头密集区域仍需人工确认。`:'模型仅检测可能的空槽，不推断工具类别。请检查红框并确认缺失物品。';
+        $("expectedMetric").textContent='—';
+        $("observedMetric").textContent='—';
+        $("missingMetric").textContent=candidates.length;
+        $("reviewMetric").textContent=candidates.length||'需确认';
+        $("missingCountLabel").textContent=realSlots&&candidates.length?`${candidates.length} 个缺失位置 · 待确认`: `${candidates.length} 个候选位置 · 待确认`;
+        $("missingList").innerHTML=candidates.length?candidates.map((x,i)=>`<div class="missing-item"><div class="missing-symbol" style="background:${realSlots?'#ffe1e3':'#fff0cf'};color:${realSlots?'#b42332':'#9b691b'}">${realSlots?'!':'?'}</div><div><div class="missing-name">${realSlots?x.label:`空槽候选 ${i+1}`} · ${Math.round(x.confidence*100)}%</div><div class="missing-detail">检测框位置：${Math.round(x.bbox.x1)}, ${Math.round(x.bbox.y1)} 至 ${Math.round(x.bbox.x2)}, ${Math.round(x.bbox.y2)}（归一化坐标）</div></div></div>`).join(''):'<div class="missing-item"><div class="missing-symbol" style="background:#fff0cf;color:#9b691b">?</div><div><div class="missing-name">未检测到空槽候选</div><div class="missing-detail">请人工检查工具盒，或更换拍摄角度重试。</div></div></div>';
+        $("inventoryBody").innerHTML='<tr><td colspan="5" style="color:#8994a5;padding:18px 5px">当前权重只检测空槽候选，不识别工具类别或标准数量。</td></tr>';
+        overlay.innerHTML='';
+        const boxes=candidates.map((x,i)=>['yolo-empty-'+i,x.bbox.x1/10,x.bbox.y1/10,(x.bbox.x2-x.bbox.x1)/10,(x.bbox.y2-x.bbox.y1)/10,`空槽候选 ${i+1} · ${Math.round(x.confidence*100)}%`,'red']);
+        lastApiPayload.boxes=boxes;drawBoxes(boxes);document.querySelectorAll('.sample-card').forEach(btn=>btn.classList.remove('active'));return;
       }
-      renderTable(s);
-      renderMissing(s);
-      drawBoxes(s.boxes);
-      document.querySelectorAll(".sample-card").forEach(btn => btn.classList.toggle("active", btn.dataset.sample === id));
+      const missing=payload.inventory.filter(x=>x.status==='missing');
+      const review=payload.inventory.filter(x=>x.status==='uncertain');
+      const verdictBox=$("verdictBox");
+      verdictBox.className='verdict '+(missing.length?'':review.length?'review':'complete');
+      $("verdictTag").className='tag '+(missing.length?'red':review.length?'':'green');
+      $("verdictTag").textContent=missing.length?'发现缺失':review.length?'需要复核':'清单齐全';
+      $("verdictKicker").textContent=missing.length?'API · 需补齐':review.length?'API · 建议人工复核':'API · 暂未发现缺失';
+      $("verdictCount").textContent=missing.length?`缺少 ${missing.reduce((n,x)=>n+x.missingCount,0)} 件`:review.length?`${review.length} 类需复核`:'0 项缺失';
+      $("verdictCopy").textContent=`模型返回 ${payload.observedTotal||payload.summary.observedTotal} 件，${review.length} 项建议人工复核。`;
+      $("expectedMetric").textContent=payload.summary.expectedTotal;
+      $("observedMetric").textContent=payload.summary.observedTotal;
+      $("missingMetric").textContent=missing.reduce((n,x)=>n+x.missingCount,0);
+      $("reviewMetric").textContent=review.length;
+      const body=$("inventoryBody"); body.innerHTML='';
+      payload.inventory.forEach(item=>{const tr=document.createElement('tr');const state=item.status==='missing'?'missing':item.status==='uncertain'?'review':'ok';const label=state==='missing'?`缺 ${item.missingCount}${item.unit}`:state==='review'?'需复核':'正常';tr.innerHTML=`<td>${item.label}</td><td class="num">${item.provisionalStandard?'约 ':''}${item.expectedCount}</td><td class="num">${item.observedCount}</td><td class="num">${item.missingCount?'-'+item.missingCount:'—'}</td><td><span class="state ${state}">${label}</span></td>`;body.appendChild(tr)});
+      const list=$("missingList"); list.innerHTML='';
+      if(!missing.length&&!review.length){list.innerHTML='<div class="missing-item" style="border-color:#c9efdd;background:#f7fdf9"><div class="missing-symbol" style="background:#ddf6e9;color:#147b59">✓</div><div><div class="missing-name" style="color:#176b4e">暂未发现缺失</div><div class="missing-detail">模型未发现超过当前标准清单的缺失项。</div></div></div>'}else {missing.forEach(item=>{const el=document.createElement('div');el.className='missing-item';el.innerHTML=`<div class="missing-symbol">!</div><div><div class="missing-name">${item.label} · 缺少 ${item.missingCount}${item.unit}</div><div class="missing-detail">标准 ${item.expectedCount}${item.unit}，识别到 ${item.observedCount}${item.unit}。</div></div>`;list.appendChild(el)});review.forEach(item=>{const el=document.createElement('div');el.className='missing-item';el.innerHTML=`<div class="missing-symbol" style="background:#fff0cf;color:#9b691b">?</div><div><div class="missing-name">${item.label} · 需要人工复核</div><div class="missing-detail">模型识别到 ${item.observedCount}${item.unit}，未能可靠确认空槽位置。</div></div>`;list.appendChild(el)})}
+      $("missingCountLabel").textContent=missing.length?missing.length+' 项待补齐':review.length+' 类需复核';
+      overlay.innerHTML='';
+      const boxes=[];
+      payload.detections.forEach(d=>{const b=d.bbox;boxes.push([d.classId,b.x1/10,b.y1/10,(b.x2-b.x1)/10,(b.y2-b.y1)/10,`${d.label} ×${d.count}`,d.reviewRequired?'amber':'green'])});
+      payload.missingSlots.forEach(d=>{const b=d.bbox;boxes.push(['missing',b.x1/10,b.y1/10,(b.x2-b.x1)/10,(b.y2-b.y1)/10,d.label,'red'])});
+      payload.uncertainRegions.forEach((region,index)=>{if(region){boxes.push([`uncertain-${index}`,region[0]/10,region[1]/10,(region[2]-region[0])/10,(region[3]-region[1])/10,'需人工复核','amber'])}});
+      lastApiPayload.boxes=boxes; drawBoxes(boxes); document.querySelectorAll('.sample-card').forEach(btn=>btn.classList.remove('active'));
+    }
+    async function analyzeFile(file, source='来源：用户上传 · 真实视觉模型') {
+      analysisController?.abort();
+      const controller=new AbortController();
+      analysisController=controller;
+      const request=++scenarioRequest;
+      const button=$('reanalyzeBtn');
+      const started=Date.now();
+      button.disabled=true;
+      button.textContent='模型分析中 0s';
+      const progress=setInterval(()=>{if(request===scenarioRequest)button.textContent=`模型分析中 ${Math.floor((Date.now()-started)/1000)}s`},1000);
+      $('modeTag').textContent='正在分析';
+      $('modeTag').className='tag blue';
+      $('sourceNote').textContent=source+' · 正在配准实拍参考图';
+      try {
+        const form=new FormData();
+        form.append('image',file,file.name);
+        form.append('mode','yolo');
+        const response=await fetch('/api/analyze',{method:'POST',body:form,signal:AbortSignal.any([controller.signal,AbortSignal.timeout(95000)])});
+        const payload=await response.json();
+        if(!response.ok)throw new Error(payload.error?.message||'视觉模型调用失败');
+        if(request!==scenarioRequest)return;
+        renderApiPayload(payload,file.name,source,file);
+        if(payload.timings)toast(`识别完成 · 模型 ${Math.round(payload.timings.modelMs/1000)} 秒`);
+      } catch(error) {
+        if(request===scenarioRequest){
+          const message=error.name==='TimeoutError'?'分析超过 95 秒，请检查网络或更换图片重试':error.message||'视觉模型调用失败，请重试';
+          $('modeTag').textContent='分析失败';
+          $('modeTag').className='tag red';
+          $('sourceNote').textContent=message;
+          $('verdictTag').textContent='未完成';
+          $('verdictKicker').textContent='API · 分析失败';
+          $('verdictCount').textContent='—';
+          $('verdictCopy').textContent=message;
+          toast(message);
+        }
+      } finally {
+        clearInterval(progress);
+        if(analysisController===controller)analysisController=null;
+        if(request===scenarioRequest){button.disabled=false;button.textContent=lastApiPayload?'重新识别 ↗':'重试分析 ↗'}
+      }
+    }
+    async function renderScenario(id) {
+      previewScenario(id);
     }
 
     $("sampleGrid").addEventListener("click", (event) => {
@@ -628,73 +674,38 @@ main{padding-top:20px;padding-bottom:24px}
       overlayOn = !overlayOn;
       $("overlaySwitch").classList.toggle("on", overlayOn);
       $("overlaySwitch").setAttribute("aria-pressed", String(overlayOn));
-      drawBoxes(scenarios[activeScenario]?.boxes ?? []);
+      drawBoxes(lastApiPayload?.boxes ?? []);
     });
 
     $("recognizedSwitch").addEventListener("click", () => {
       recognizedOn = !recognizedOn;
       $("recognizedSwitch").classList.toggle("on", recognizedOn);
       $("recognizedSwitch").setAttribute("aria-pressed", String(recognizedOn));
-      drawBoxes(scenarios[activeScenario]?.boxes ?? []);
+      drawBoxes(lastApiPayload?.boxes ?? []);
     });
 
     $("uploadBtn").addEventListener("click", () => $("fileInput").click());
     $("fileInput").addEventListener("change", (event) => {
       const file = event.target.files?.[0];
       if (!file) return;
-      if (!["image/jpeg","image/png","image/webp"].includes(file.type)) {
-        toast("仅支持 JPG、PNG、WEBP 图片。");
+      if (!["image/jpeg","image/png","image/webp"].includes(file.type) || file.size > 7 * 1024 * 1024) {
+        toast(file.size > 7 * 1024 * 1024 ? "图片不能超过 7 MB。" : "仅支持 JPG、PNG、WEBP 图片。");
         event.target.value = "";
         return;
       }
-      if (file.size > 7 * 1024 * 1024) {
-        toast("样例页面限制图片不超过 7 MB。");
-        event.target.value = "";
-        return;
-      }
-      if (customFileUrl) URL.revokeObjectURL(customFileUrl);
-      customFileUrl = URL.createObjectURL(file);
-      isCustomUpload = true; scenarioRequest++; $("reanalyzeBtn").disabled=false;
-      image.src = customFileUrl;
-      image.style.display = "block";
-      $("uploadEmpty").style.display = "block";
-      overlay.innerHTML = "";
-      $("fileName").textContent = file.name;
-      $("imageDimensions").textContent = "自定义上传";
-      $("sourceNote").textContent = "来源：用户上传 · 尚未调用模型";
-      $("modeTag").textContent = "待真实 API 分析";
-      $("modeTag").className = "tag";
-      $("verdictBox").className = "verdict review";
-      $("verdictTag").className = "tag";
-      $("verdictTag").textContent = "等待识别";
-      $("verdictKicker").textContent = "WAITING · 未产生识别结论";
-      $("verdictCount").textContent = "待分析";
-      $("verdictCopy").textContent = "图片已上传并完成预览。当前原型未连接 Qwen-VL，因此不会给出虚构的缺失判断。";
-      $("missingList").innerHTML = `<div class="missing-item" style="border-color:#f1dfb8;background:#fffaf0">
-        <div class="missing-symbol" style="background:#fff0cf;color:#9b691b">…</div>
-        <div><div class="missing-name" style="color:#805915">尚未执行真实识别</div>
-        <div class="missing-detail">接入 Qwen API 后，点击分析即可返回工具框、数量和缺失结论。</div></div></div>`;
-      $("missingCountLabel").textContent = "待分析";
-      $("inventoryBody").innerHTML = `<tr><td colspan="5" style="color:#8994a5;padding:18px 5px">自定义图片尚未识别，不显示模拟数量。</td></tr>`;
-      $("expectedMetric").textContent = "53";
-      $("observedMetric").textContent = "—";
-      $("missingMetric").textContent = "—";
-      $("reviewMetric").textContent = "—";
-      document.querySelectorAll(".sample-card").forEach(btn => btn.classList.remove("active"));
-      toast("图片预览已更新。此原型未连接 Qwen API，不会生成模拟识别结果。");
+      event.target.value="";
+      if(customFileUrl)URL.revokeObjectURL(customFileUrl);
+      customFileUrl=URL.createObjectURL(file);
+      analysisController?.abort();lastApiPayload=null;lastAnalyzedFile=file;isCustomUpload=true;activeScenario=null;scenarioRequest++;
+      image.src=customFileUrl;image.style.display='block';$('uploadEmpty').style.display='none';$('fileName').textContent=file.name;$('imageDimensions').textContent='等待运行';$('sourceNote').textContent='来源：用户上传';$('modeTag').textContent='准备分析';$('modeTag').className='tag blue';$('expectedMetric').textContent=53;$('observedMetric').textContent='—';$('missingMetric').textContent='—';$('reviewMetric').textContent='—';$('verdictTag').textContent='准备分析';$('verdictKicker').textContent='实拍槽位 · 正在分析图片';$('verdictCount').textContent='处理中';$('verdictCopy').textContent='图片已载入，正在匹配实拍工具盒参考图。';$('missingCountLabel').textContent='分析中';$('missingList').innerHTML='<div class="missing-item"><div class="missing-symbol">…</div><div><div class="missing-name">正在分析图片</div><div class="missing-detail">识别完成后显示工具数量和缺失位置。</div></div></div>';$('inventoryBody').innerHTML='<tr><td colspan="5" style="color:#8994a5;padding:18px 5px">正在等待视觉模型结果。</td></tr>';overlay.innerHTML='';document.querySelectorAll('.sample-card').forEach(button=>button.classList.remove('active'));analyzeFile(file,'来源：用户上传 · 真实视觉模型');
     });
 
-    $("reanalyzeBtn").addEventListener("click", () => {
-      if (isCustomUpload) {
-        toast("真实 Qwen API 尚未接入：当前只完成图片预览，不会伪造识别结果。");
-        return;
-      }
-      renderScenario(activeScenario);
-      toast("盘点记录已更新。");
+    $("reanalyzeBtn").addEventListener("click", async () => {
+      if(activeScenario&&!lastAnalyzedFile){const path=sampleImages[activeScenario];$('reanalyzeBtn').disabled=true;try{const response=await fetch(path);if(!response.ok)throw new Error('测试图片加载失败');const blob=await response.blob();if(!blob.size)throw new Error('测试图片内容为空');const file=new File([blob],path.split('/').pop(),{type:blob.type});lastAnalyzedFile=file;analyzeFile(file,'来源：内置测试图片 · 真实视觉模型')}catch(error){$('reanalyzeBtn').disabled=false;toast(error.message||'测试图片加载失败')}return}
+      if(lastAnalyzedFile)analyzeFile(lastAnalyzedFile,isCustomUpload?'来源：用户上传 · 真实视觉模型':'来源：内置测试图片 · 真实视觉模型');
     });
 
-    // Initial sample: a missing socket, so the primary UI shows the key missing-item experience.
-    renderScenario("socket");
+    previewScenario('socket');
   </script>
 </body>
 </html>

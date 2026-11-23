@@ -1,0 +1,7 @@
+# GPU inference/training environment used for the latest model
+# Install a CUDA-compatible PyTorch build first for the target machine.
+torch==2.6.0
+ultralytics==8.4.216
+opencv-python
+numpy
+PyYAML

@@ -1,1 +1,1 @@
-export function GET(){return Response.json({ok:true,mode:'mock',qwenConfigured:false})}
+export function GET(){const configured=Boolean(process.env.VISION_MODEL_BASE_URL&&process.env.VISION_MODEL_API_KEY&&process.env.VISION_MODEL_NAME);return Response.json({ok:true,mode:process.env.ANALYSIS_MODE||'yolo',visionModelConfigured:configured,model:configured?process.env.VISION_MODEL_NAME:undefined})}
