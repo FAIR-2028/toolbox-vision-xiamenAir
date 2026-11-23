@@ -1,34 +1,16 @@
 # 工具盒视觉盘点工作台
 
-根目录只保留本说明文件，其余内容按目录分类。
+上传工具盒照片，通过本地 ONNX 模型标出疑似空槽，供现场人员复核。模型针对仓库中的实拍照片训练，适合当前工具盒的定向演示。
 
-## 目录
+## Docker 启动
 
-- `project/`：完整 Next.js 项目、源码、依赖、配置及原项目说明。
-- `archive/`：历史源码备份。
-- `logs/`：原根目录的运行日志。
-- `docs/`：迁移时仍被其他会话占用的验收记录；其他项目资料已随项目迁入 `project/docs/`。
+安装并启动 Docker Desktop，然后在仓库根目录运行：
 
-## 启动
-
-双击 `project/start-demo.cmd`。启动后访问 http://127.0.0.1:3002。
-
-命令行开发：
-
-```powershell
-cd E:\toolbox-vision-demo\project
-npm run dev -- --port 3003
+```sh
+cd project
+docker compose up --build -d
 ```
 
-重新构建生产版本：
+访问 http://127.0.0.1:3000/inspection.html。更多启动、测试、模型和数据集说明见 [项目 README](project/README.md)。
 
-```powershell
-cd E:\toolbox-vision-demo\project
-npm run build
-```
-
-Docker 命令也应在 `project/` 内运行。不要在外层根目录执行 npm 命令。
-
-## 当前状态
-
-演示页面与 Mock 后端已具备；真实视觉识别、真实照片验证和完整部署验收尚未完成。本次整理停止了项目预览服务，未自动重启。旧构建产物保留，但移动目录后建议重新构建再使用生产版。原文档中的旧绝对路径应按新的 `project/` 位置理解。
+Windows 用户也可以运行 `project/start-demo.cmd`，本地服务默认使用 3002 端口。

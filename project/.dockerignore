@@ -9,3 +9,11 @@ node_modules
 test-results
 archive
 logs
+.venv-yolo
+node_modules
+.next
+.env.local
+.env.*
+!.env.example
+data/*/runs
+data/*/train.log

@@ -12,21 +12,16 @@ logs/
 *.backup*
 *.reference-backup*
 
-# Local YOLO experiments and generated build artifacts
+# Local training runs and virtual environments
 /data/*/runs/
 /data/*/train.log
 /data/*/labels/*.cache
-/.next/
 /.venv-yolo/
-/models/*.pt
-!/models/empty-slot-yolo11n.pt
 yolo11n.pt
 
-# Local YOLO experiments and generated build artifacts
-/data/*/runs/
-/data/*/train.log
-/data/*/labels/*.cache
-/.next/
-/.venv-yolo/
+# Keep only the two deployable model formats
 /models/*.pt
+!/models/
 !/models/empty-slot-yolo11n.pt
+/models/*.onnx
+!/models/empty-slot-yolo11n.onnx

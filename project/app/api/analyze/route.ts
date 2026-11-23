@@ -1,5 +1,6 @@
 import sharp from 'sharp';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import path from 'node:path';
 import { mockResult } from '../../../lib/mock';
 import inventoryConfig from '../../../config/tool_inventory.json';
 
@@ -20,7 +21,7 @@ function projectRoot() {
 function runPythonJson<T>(script: string, image: Buffer, timeoutMs: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const root = projectRoot();
-    const python = process.env.YOLO_PYTHON || `${root}/.venv-yolo/Scripts/python.exe`;
+    const python = process.env.YOLO_PYTHON || path.join(root, process.platform === 'win32' ? '.venv-yolo/Scripts/python.exe' : '.venv-yolo/bin/python');
     const child = spawn(python, [`${root}/scripts/${script}`], { cwd: root, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
@@ -37,7 +38,7 @@ function runPythonJson<T>(script: string, image: Buffer, timeoutMs: number): Pro
   });
 }
 
-type YoloResult = { emptySlots: { bbox: [number, number, number, number]; confidence: number }[] };
+type YoloResult = { emptySlots: { bbox: [number, number, number, number]; confidence: number }[]; backend?: string; provider?: string };
 
 type YoloPending = { resolve: (result: YoloResult) => void; reject: (error: Error) => void; timer: NodeJS.Timeout };
 
@@ -83,7 +84,7 @@ function ensureYoloWorker() {
   if (yoloStart) return yoloStart;
   yoloStart = new Promise<void>((resolve, reject) => {
     const root = yoloRoot();
-    const python = process.env.YOLO_PYTHON || `${root}/.venv-yolo/Scripts/python.exe`;
+    const python = process.env.YOLO_PYTHON || path.join(root, process.platform === 'win32' ? '.venv-yolo/Scripts/python.exe' : '.venv-yolo/bin/python');
     const child = spawn(python, [`${root}/scripts/yolo_worker.py`], { cwd: root, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     yoloProcess = child;
     let started = false;
@@ -394,7 +395,9 @@ export async function POST(req: Request) {
       const result = {
         requestId,
         mode: 'yolo',
-        provider: 'local-yolo',
+        provider: detected.backend === 'onnx' ? 'onnx-runtime' : 'local-yolo',
+        backend: detected.backend || 'onnx',
+        executionProvider: detected.provider,
         model: 'YOLO11n · 实拍空槽',
         status: 'needs_review',
         image: { width: optimized.info.width, height: optimized.info.height },
