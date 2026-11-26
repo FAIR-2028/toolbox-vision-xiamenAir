@@ -47,7 +47,7 @@ Linux/macOS 本地运行可创建 `.venv-yolo`，安装 `requirements-onnx.txt`�
 - `models/empty-slot-yolo11n.onnx` 是部署模型，`models/empty-slot-yolo11n.pt` 是训练权重。
 - ONNX worker 在进程内复用会话。默认自动选择可用的 CUDA provider 或 CPU provider，`YOLO_BACKEND=cpu` 可指定 CPU。Docker 配置使用 CPU。安装 CUDA provider 及其兼容依赖需另行配置。
 - 本模型检测空槽候选，不识别具体缺失工具类别。训练集和评估数据高度相关，当前结果不代表对其他工具盒或现场环境的泛化准确率。
-- 最新训练集位于 `data/real_yolo_100_originals/`，含 100 张图和对应 YOLO 标注。训练入口为 `scripts/train_real_yolo_originals.py`。原始实拍图位于仓库根目录的 `datasets/`。
+- 最新训练集位于 `data/real_yolo_100_originals/`，含 98 张增强图和对应 YOLO 标注。训练入口为 `scripts/train_real_yolo_originals.py`。原始实拍图位于仓库根目录的 `datasets/`。
 
 ## 检查和测试
 

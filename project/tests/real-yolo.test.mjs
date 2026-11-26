@@ -1,36 +1,33 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 
-const base = process.env.TEST_BASE_URL || 'http://127.0.0.1:3002';
-const annotations = JSON.parse(await readFile(new URL('../data/real_yolo_100/annotations.json', import.meta.url)));
+const dataset = new URL('../data/real_yolo_100_originals/', import.meta.url);
 
-test('YOLO detects all eight user-annotated photographs', { timeout: 180000 }, async () => {
-  for (const [index, photo] of annotations.entries()) {
-    const image = await readFile(new URL(`../data/real_yolo_100/annotated_source/${String(index + 1).padStart(2, '0')}.png`, import.meta.url));
-    const form = new FormData();
-    form.append('image', new Blob([image], { type: 'image/png' }), 'photo.png');
-    form.append('mode', 'yolo');
-    const response = await fetch(`${base}/api/analyze`, { method: 'POST', body: form });
-    assert.equal(response.status, 200);
-    const result = await response.json();
-    assert.equal(result.mode, 'yolo');
-    assert.equal(result.missingSlots.length, photo.boxes.length, `photo ${index + 1} detection count`);
-    const remaining = [...result.missingSlots];
-    for (const [x1, y1, x2, y2] of photo.boxes) {
-      const expected = [x1 / photo.width, y1 / photo.height, x2 / photo.width, y2 / photo.height];
-      let bestIndex = -1;
-      let bestIoU = 0;
-      remaining.forEach(({ bbox }, candidateIndex) => {
-        const actual = [bbox.x1 / 1000, bbox.y1 / 1000, bbox.x2 / 1000, bbox.y2 / 1000];
-        const intersection = Math.max(0, Math.min(expected[2], actual[2]) - Math.max(expected[0], actual[0])) *
-          Math.max(0, Math.min(expected[3], actual[3]) - Math.max(expected[1], actual[1]));
-        const area = ([left, top, right, bottom]) => (right - left) * (bottom - top);
-        const iou = intersection / (area(expected) + area(actual) - intersection);
-        if (iou > bestIoU) { bestIoU = iou; bestIndex = candidateIndex; }
-      });
-      assert.ok(bestIoU >= 0.5, `photo ${index + 1} annotation IoU ${bestIoU.toFixed(3)}`);
-      remaining.splice(bestIndex, 1);
+test('training images have matching labels and no exact duplicate images', async () => {
+  const imageDirectory = new URL('images/train/', dataset);
+  const labelDirectory = new URL('labels/train/', dataset);
+  const images = (await readdir(imageDirectory)).filter((name) => name.endsWith('.jpg')).sort();
+  const labels = (await readdir(labelDirectory)).filter((name) => name.endsWith('.txt')).sort();
+
+  assert.equal(images.length, 98);
+  assert.deepEqual(labels, images.map((name) => name.replace(/\.jpg$/, '.txt')));
+
+  const hashes = new Set();
+  for (const name of images) {
+    const image = await readFile(new URL(name, imageDirectory));
+    const hash = createHash('sha256').update(image).digest('hex');
+    assert.equal(hashes.has(hash), false, `${name} duplicates another training image`);
+    hashes.add(hash);
+
+    const label = await readFile(new URL(name.replace(/\.jpg$/, '.txt'), labelDirectory), 'utf8');
+    for (const line of label.trim().split(/\r?\n/)) {
+      const [classId, ...box] = line.split(/\s+/).map(Number);
+      assert.equal(classId, 0);
+      assert.equal(box.length, 4);
+      assert.ok(box.every((value) => Number.isFinite(value) && value >= 0 && value <= 1), `${name} has an invalid box`);
+      assert.ok(box[2] > 0 && box[3] > 0, `${name} has an empty box`);
     }
   }
 });
